@@ -16,11 +16,10 @@ def sorted_frequencies(doc):
     frequencies.sort(key=lambda entry: -entry['count'])
     return frequencies
 
-def term_frequency(term, doc):
-    sf = sorted_frequencies(doc)
-    entry = next((e for e in sf if e['word'] == term), None)
+def term_frequency(term, sorted_frequencies):
+    entry = next((e for e in sorted_frequencies if e['word'] == term), None)
     term_freq = entry['count']
-    max_freq = sf[0]['count']
+    max_freq = sorted_frequencies[0]['count']
     return term_freq / max_freq
 
 def inverse_document_frequency(term, corpus):
@@ -30,9 +29,9 @@ def inverse_document_frequency(term, corpus):
             num_occurring += 1
     return math.log2(len(corpus)/num_occurring)
 
-def tfidf(term, doc, corpus, word_document_frequencies):
+def tfidf(term, corpus, sorted_frequencies, word_document_frequencies):
     idf = math.log2(len(corpus)/word_document_frequencies[term])
-    return term_frequency(term, doc) * idf
+    return term_frequency(term, sorted_frequencies) * idf
 
 def prep_doc(filepath):
     with open(filepath) as file:
@@ -89,9 +88,12 @@ print(len(word_document_frequencies))
 doc = docs[0]
 
 doc_stats = sorted_frequencies(doc)
+
+sorted_frequencies = sorted_frequencies(doc)
+
 t1 = time.time()
 for entry in doc_stats:
-    entry['tfidf'] = tfidf(entry['word'], doc, docs, word_document_frequencies)
+    entry['tfidf'] = tfidf(entry['word'], docs, sorted_frequencies, word_document_frequencies)
 t2 = time.time()
 print(f"tfidf: {t2-t1}")
 
