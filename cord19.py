@@ -65,7 +65,7 @@ def gen_corpus_frequencies(corpus):
                 wordcounts[word] += 1
     return wordcounts
 
-limit = 10
+limit = 100
 i = 0
 filepaths = []
 dirpath = 'data/document_parses/pdf_json'
@@ -82,18 +82,22 @@ docs = [prep_doc(path) for path in filepaths]
 t2 = time.time()
 print(f"prepping docs: {t2-t1}")
 
+t1 = time.time()
 word_document_frequencies = gen_corpus_frequencies(docs)
 print(len(word_document_frequencies))
+t2 = time.time()
+print(f"gen_corpus_frequencies: {t2-t1}")
 
 doc = docs[0]
 
+t1 = time.time()
 doc_stats = sorted_frequencies(doc)
-
-sorted_frequencies = sorted_frequencies(doc)
+t2 = time.time()
+print(f"sorted_frequencies: {t2-t1}")
 
 t1 = time.time()
 for entry in doc_stats:
-    entry['tfidf'] = tfidf(entry['word'], docs, sorted_frequencies, word_document_frequencies)
+    entry['tfidf'] = tfidf(entry['word'], docs, doc_stats, word_document_frequencies)
 t2 = time.time()
 print(f"tfidf: {t2-t1}")
 
