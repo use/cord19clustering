@@ -30,8 +30,9 @@ def inverse_document_frequency(term, corpus):
             num_occurring += 1
     return math.log2(len(corpus)/num_occurring)
 
-def tfidf(term, doc, corpus):
-    return term_frequency(term, doc) * inverse_document_frequency(term, corpus)
+def tfidf(term, doc, corpus, word_document_frequencies):
+    idf = math.log2(len(corpus)/word_document_frequencies[term])
+    return term_frequency(term, doc) * idf
 
 def term_frequency(term, doc):
     sf = sorted_frequencies(doc)
@@ -66,10 +67,11 @@ def gen_corpus_frequencies(corpus):
     # get number of docs in which each word occurs
     wordcounts = dict.fromkeys(corpus_words)
     for word in wordcounts:
-        wordcounts[word] = 1
+        wordcounts[word] = 0
         for doc in corpus:
-            if word in corpus:
+            if word in doc:
                 wordcounts[word] += 1
+    return wordcounts
 
 limit = 10
 i = 0
@@ -88,12 +90,15 @@ docs = [prep_doc(path) for path in filepaths]
 t2 = time.time()
 print(f"prepping docs: {t2-t1}")
 
+word_document_frequencies = gen_corpus_frequencies(docs)
+print(len(word_document_frequencies))
+
 doc = docs[0]
 
 doc_stats = sorted_frequencies(doc)
 t1 = time.time()
 for entry in doc_stats:
-    entry['tfidf'] = tfidf(entry['word'], doc, docs)
+    entry['tfidf'] = tfidf(entry['word'], doc, docs, word_document_frequencies)
 t2 = time.time()
 print(f"tfidf: {t2-t1}")
 
