@@ -34,13 +34,6 @@ def tfidf(term, doc, corpus, word_document_frequencies):
     idf = math.log2(len(corpus)/word_document_frequencies[term])
     return term_frequency(term, doc) * idf
 
-def term_frequency(term, doc):
-    sf = sorted_frequencies(doc)
-    entry = next((e for e in sf if e['word'] == term), None)
-    term_freq = entry['count']
-    max_freq = sf[0]['count']
-    return term_freq / max_freq
-
 def prep_doc(filepath):
     with open(filepath) as file:
         doc = json.load(file)
