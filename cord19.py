@@ -33,22 +33,42 @@ def tfidf(term, corpus, sorted_frequencies, word_document_frequencies):
     idf = math.log2(len(corpus)/word_document_frequencies[term])
     return term_frequency(term, sorted_frequencies) * idf
 
+timings = {
+    'load': 0,
+    'lowercase': 0,
+    'punctuation': 0,
+    'tokenize': 0,
+    'stopwords': 0,
+    'stemming': 0,
+}
 def prep_doc(filepath):
     with open(filepath) as file:
+        t1 = time.time()
         doc = json.load(file)
+        timings['load'] += time.time()-t1
         # get text and lowercase it, then combine
+        t1 = time.time()
         text = ' '.join([chunk['text'].lower() for chunk in doc['body_text']])
+        timings['lowercase'] += time.time()-t1
         # remove punctuation
+        t1 = time.time()
         text = ''.join([char for char in text if char not in string.punctuation])
+        timings['punctuation'] += time.time()-t1
         # tokenize, remove empty words, get a sample
+        t1 = time.time()
         text = text.split(' ')
         text = [word for word in text if word != '']
+        timings['tokenize'] += time.time()-t1
         # remove stopwords
-        stopwords = nltk.corpus.stopwords.words('english')
+        t1 = time.time()
+        stopwords = set(nltk.corpus.stopwords.words('english'))
         text = [word for word in text if word not in stopwords]
+        timings['stopwords'] += time.time()-t1
         # stemming
+        t1 = time.time()
         stemmer = nltk.stem.LancasterStemmer()
         text = [stemmer.stem(word) for word in text]
+        timings['stemming'] += time.time()-t1
         return text
 
 def gen_corpus_frequencies(corpus):
@@ -66,7 +86,7 @@ def gen_corpus_frequencies(corpus):
                 wordcounts[word] += 1
     return wordcounts
 
-limit = 100
+limit = 10
 i = 0
 filepaths = []
 dirpath = 'data/document_parses/pdf_json'
@@ -104,3 +124,6 @@ doc_stats.sort(key=lambda entry: -entry['tfidf'])
 
 for entry in doc_stats[0:10]:
     print(entry['word'], entry['tfidf'])
+
+for t in timings:
+    print(f"{t}: {timings[t]}")
