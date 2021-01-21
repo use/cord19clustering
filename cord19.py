@@ -66,8 +66,8 @@ def prep_doc(filepath):
         timings['stopwords'] += time.time()-t1
         # stemming
         t1 = time.time()
-        stemmer = nltk.stem.LancasterStemmer()
-        text = [stemmer.stem(word) for word in text]
+        lemmatizer = nltk.wordnet.WordNetLemmatizer()
+        text = [lemmatizer.lemmatize(word) for word in text]
         timings['stemming'] += time.time()-t1
         return text
 
