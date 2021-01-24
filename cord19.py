@@ -75,17 +75,21 @@ def prep_doc(filepath):
 
 def gen_corpus_frequencies(corpus):
     # get all words in corpus
+    t1 = time.time()
     word_sets = [set(doc) for doc in docs]
     corpus_words = set()
     for doc in word_sets:
         corpus_words.update(doc)
+    timings['collectwords'] = time.time()-t1
     # get number of docs in which each word occurs
+    t1 = time.time()
     wordcounts = dict.fromkeys(corpus_words)
     for word in wordcounts:
         wordcounts[word] = 0
-        for doc in word_sets:
-            if word in doc:
-                wordcounts[word] += 1
+    for word_set in word_sets:
+        for word in word_set:
+            wordcounts[word] += 1
+    timings['countwords'] = time.time()-t1
     return wordcounts
 
 limit = 10
