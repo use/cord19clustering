@@ -22,11 +22,7 @@ def detect_english(doc):
 def sorted_frequencies(doc):
     frequencies = []
     for word in doc:
-        entry = next((e for e in frequencies if e['word'] == word), None)
-        if entry is None:
-            frequencies.append({'word': word, 'count': 1})
-        else:
-            entry['count'] += 1
+        frequencies.append({'word': word, 'count': doc[word]})
     frequencies.sort(key=lambda entry: -entry['count'])
     return frequencies
 
@@ -54,6 +50,7 @@ timings = {
     'tokenize': 0,
     'stopwords': 0,
     'stemming': 0,
+    'docindex': 0,
 }
 def prep_doc(filepath):
     with open(filepath) as file:
@@ -87,12 +84,19 @@ def prep_doc(filepath):
         lemmatizer = nltk.wordnet.WordNetLemmatizer()
         text = [lemmatizer.lemmatize(word) for word in text]
         timings['stemming'] += time.time()-t1
-        return text
+        t1 = time.time()
+        docindex = dict.fromkeys(set(text))
+        for word in docindex:
+            docindex[word] = 0
+        for word in text:
+            docindex[word] += 1
+        timings['docindex'] += time.time()-t1
+        return docindex
 
 def gen_corpus_frequencies(corpus):
     # get all words in corpus
     t1 = time.time()
-    word_sets = [set(doc) for doc in docs]
+    word_sets = [set(doc.keys()) for doc in docs]
     corpus_words = set()
     for doc in word_sets:
         corpus_words.update(doc)
