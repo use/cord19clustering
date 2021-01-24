@@ -3,6 +3,7 @@ import json
 import string
 import nltk
 import os
+import re
 import time
 
 def sorted_frequencies(doc):
@@ -52,7 +53,8 @@ def prep_doc(filepath):
         timings['lowercase'] += time.time()-t1
         # remove punctuation
         t1 = time.time()
-        text = ''.join([char for char in text if char not in string.punctuation])
+        regex = re.compile(f"[{re.escape(string.punctuation)}]")
+        text = regex.sub('', text)
         timings['punctuation'] += time.time()-t1
         # tokenize, remove empty words, get a sample
         t1 = time.time()
