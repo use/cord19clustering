@@ -1,10 +1,12 @@
-import math
 import json
-import string
-import nltk
+import math
 import os
 import re
+import string
 import time
+
+import nltk
+
 
 def sorted_frequencies(doc):
     frequencies = []
