@@ -4,9 +4,20 @@ import os
 import re
 import string
 import time
-
 import nltk
 
+from langdetect import detect
+
+def detect_english(doc):
+    # Default langauge is English (most docs are)
+    language = 'en'
+    if len(doc) > 25:
+        language = detect(' '.join(doc[:25]))
+    elif len(doc) > 0:
+        language = detect(' '.join(doc[:len(doc)]))
+    # This is a 2 letter string indicating the language
+    # All we care about are the 'en' ones
+    return language == 'en'
 
 def sorted_frequencies(doc):
     frequencies = []
@@ -63,6 +74,9 @@ def prep_doc(filepath):
         text = text.split(' ')
         text = [word for word in text if word != '']
         timings['tokenize'] += time.time()-t1
+        # Check langauge - if not English, do not include it
+        if not detect_english(text):
+            return
         # remove stopwords
         t1 = time.time()
         stopwords = set(nltk.corpus.stopwords.words('english'))
@@ -106,12 +120,14 @@ for path in os.listdir(dirpath):
 
 t1 = time.time()
 docs = [prep_doc(path) for path in filepaths]
+# Drop all NoneType docs (occurs if not English)
+docs = [x for x in docs if x != None]
 t2 = time.time()
 print(f"prepping docs: {t2-t1}")
 
 t1 = time.time()
 word_document_frequencies = gen_corpus_frequencies(docs)
-print(len(word_document_frequencies))
+print(f"Number of words: {len(word_document_frequencies)}")
 t2 = time.time()
 print(f"gen_corpus_frequencies: {t2-t1}")
 
