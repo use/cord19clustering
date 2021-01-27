@@ -23,22 +23,8 @@ def detect_english(doc):
         return False
     return language == 'en'
 
-def sorted_frequencies(doc):
-    frequencies = []
-    for word in doc:
-        entry = next((e for e in frequencies if e['word'] == word), None)
-        if entry is None:
-            frequencies.append({'word': word, 'count': 1})
-        else:
-            entry['count'] += 1
-    frequencies.sort(key=lambda entry: -entry['count'])
-    return frequencies
-
-def term_frequency(term, sorted_frequencies):
-    entry = next((e for e in sorted_frequencies if e['word'] == term), None)
-    term_freq = entry['count']
-    max_freq = sorted_frequencies[0]['count']
-    return term_freq / max_freq
+def term_frequency(term, doc):
+    return doc[term] / max(doc.values())
 
 def inverse_document_frequency(term, corpus):
     num_occurring = 0
@@ -47,9 +33,9 @@ def inverse_document_frequency(term, corpus):
             num_occurring += 1
     return math.log2(len(corpus)/num_occurring)
 
-def tfidf(term, corpus, sorted_frequencies, word_document_frequencies):
+def tfidf(term, corpus, doc, word_document_frequencies):
     idf = math.log2(len(corpus)/word_document_frequencies[term])
-    return term_frequency(term, sorted_frequencies) * idf
+    return term_frequency(term, doc) * idf
 
 timings = {
     'load': 0,
@@ -92,7 +78,12 @@ def prep_doc(filepath):
         lemmatizer = nltk.wordnet.WordNetLemmatizer()
         text = [lemmatizer.lemmatize(word) for word in text]
         timings['stemming'] += time.time()-t1
-        return text
+        docindex = dict.fromkeys(set(text))
+        for word in docindex:
+            docindex[word] = 0
+        for word in text:
+            docindex[word] += 1
+        return docindex
 
 def gen_corpus_frequencies_vocab(corpus):
     t1 = time.time()
@@ -131,12 +122,11 @@ def to_tfidf_vectors(corpus, vocabulary, word_document_frequencies):
     numerical_corpus = []
     for doc in corpus:
         num_vector_doc = []
-        doc_stats = sorted_frequencies(doc)
         for word in vocabulary:
             if word not in doc:
                 num_vector_doc.append(0)
             else:
-                num_vector_doc.append(tfidf(word, corpus, doc_stats, word_document_frequencies))
+                num_vector_doc.append(tfidf(word, corpus, doc, word_document_frequencies))
         numerical_corpus.append(num_vector_doc)
     return numerical_corpus
 
