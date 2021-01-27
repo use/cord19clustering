@@ -5,24 +5,32 @@ import re
 import string
 import time
 import nltk
+import numpy
 
 from langdetect import detect
 
 def detect_english(doc):
     # Default langauge is English (most docs are)
-    language = 'en'
-    if len(doc) > 25:
-        language = detect(' '.join(doc[:25]))
-    elif len(doc) > 0:
-        language = detect(' '.join(doc[:len(doc)]))
-    # This is a 2 letter string indicating the language
     # All we care about are the 'en' ones
+    language = 'en'
+    try:
+        if len(doc) > 25:
+            language = detect(' '.join(doc[:25]))
+        elif len(doc) > 0:
+            language = detect(' '.join(doc[:len(doc)]))
+    except Exception as e:
+        # If cannot detect language, drop doc
+        return False
     return language == 'en'
 
 def sorted_frequencies(doc):
     frequencies = []
     for word in doc:
-        frequencies.append({'word': word, 'count': doc[word]})
+        entry = next((e for e in frequencies if e['word'] == word), None)
+        if entry is None:
+            frequencies.append({'word': word, 'count': 1})
+        else:
+            entry['count'] += 1
     frequencies.sort(key=lambda entry: -entry['count'])
     return frequencies
 
@@ -50,8 +58,8 @@ timings = {
     'tokenize': 0,
     'stopwords': 0,
     'stemming': 0,
-    'docindex': 0,
 }
+
 def prep_doc(filepath):
     with open(filepath) as file:
         t1 = time.time()
@@ -79,24 +87,17 @@ def prep_doc(filepath):
         stopwords = set(nltk.corpus.stopwords.words('english'))
         text = [word for word in text if word not in stopwords]
         timings['stopwords'] += time.time()-t1
-        # stemming
+        # Lemmatization
         t1 = time.time()
         lemmatizer = nltk.wordnet.WordNetLemmatizer()
         text = [lemmatizer.lemmatize(word) for word in text]
         timings['stemming'] += time.time()-t1
-        t1 = time.time()
-        docindex = dict.fromkeys(set(text))
-        for word in docindex:
-            docindex[word] = 0
-        for word in text:
-            docindex[word] += 1
-        timings['docindex'] += time.time()-t1
-        return docindex
+        return text
 
-def gen_corpus_frequencies(corpus):
-    # get all words in corpus
+def gen_corpus_frequencies_vocab(corpus):
     t1 = time.time()
-    word_sets = [set(doc.keys()) for doc in docs]
+    # get all words in corpus
+    word_sets = [set(doc) for doc in corpus]
     corpus_words = set()
     for doc in word_sets:
         corpus_words.update(doc)
@@ -110,48 +111,73 @@ def gen_corpus_frequencies(corpus):
         for word in word_set:
             wordcounts[word] += 1
     timings['countwords'] = time.time()-t1
-    return wordcounts
+    return wordcounts, list(corpus_words)
 
-limit = 10
-i = 0
-filepaths = []
-dirpath = 'data/document_parses/pdf_json'
-for path in os.listdir(dirpath):
-    i += 1
-    if i > limit:
-        break
-    filepaths.append(os.path.join(dirpath, path))
+def get_n_docs(n):
+    dirpath = '../input/CORD-19-research-challenge/document_parses/pdf_json'
+    corpus = []
+    i = 0
+    for path in os.listdir(dirpath):
+        i += 1
+        if i > n:
+            break
+        corpus.append(prep_doc(os.path.join(dirpath, path)))
+        #filepaths.append(os.path.join(dirpath, path))
+    # Drop all NoneType docs (occurs if not English)
+    corpus = [x for x in corpus if x != None]
+    return corpus
+
+def to_tfidf_vectors(corpus, vocabulary, word_document_frequencies):
+    numerical_corpus = []
+    for doc in corpus:
+        num_vector_doc = []
+        doc_stats = sorted_frequencies(doc)
+        for word in vocabulary:
+            if word not in doc:
+                num_vector_doc.append(0)
+            else:
+                num_vector_doc.append(tfidf(word, corpus, doc_stats, word_document_frequencies))
+        numerical_corpus.append(num_vector_doc)
+    return numerical_corpus
+
+num_docs = 10
+t0 = time.time() # Track total time
 
 t1 = time.time()
-docs = [prep_doc(path) for path in filepaths]
-# Drop all NoneType docs (occurs if not English)
-docs = [x for x in docs if x != None]
+corpus = get_n_docs(num_docs)
 t2 = time.time()
 print(f"prepping docs: {t2-t1}")
 
 t1 = time.time()
-word_document_frequencies = gen_corpus_frequencies(docs)
-print(f"Number of words: {len(word_document_frequencies)}")
+word_document_frequencies, vocabulary = gen_corpus_frequencies_vocab(corpus)
+print(f"Number of words in vocabulary: {len(vocabulary)}")
 t2 = time.time()
 print(f"gen_corpus_frequencies: {t2-t1}")
 
-doc = docs[0]
-
-t1 = time.time()
-doc_stats = sorted_frequencies(doc)
+num_vector_corpus = to_tfidf_vectors(corpus, vocabulary, word_document_frequencies)
 t2 = time.time()
-print(f"sorted_frequencies: {t2-t1}")
+print(numpy.count_nonzero(num_vector_corpus[0]))
+print(f'Total time: {t2-t0}')
 
+'''
+Might be better/faster to use this tfidf method
+https://www.kaggle.com/maksimeren/covid-19-literature-clustering#PCA--&-Clustering
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+def vectorize(text, maxx_features):
+    
+    vectorizer = TfidfVectorizer(max_features=maxx_features)
+    X = vectorizer.fit_transform(text)
+    return X
+'''
+
+from sklearn.decomposition import PCA
+# Looks like shape is wrong - are documents rows or columns?
+# Either way, documents should be vocabulary length, not
+
+print(f'Shape prior to reduciton: {numpy.shape(num_vector_corpus)}')
 t1 = time.time()
-for entry in doc_stats:
-    entry['tfidf'] = tfidf(entry['word'], docs, doc_stats, word_document_frequencies)
+corpus_reduced = PCA(n_components=0.95, random_state=42).fit_transform(numpy.array(num_vector_corpus))
 t2 = time.time()
-print(f"tfidf: {t2-t1}")
-
-doc_stats.sort(key=lambda entry: -entry['tfidf'])
-
-for entry in doc_stats[0:10]:
-    print(entry['word'], entry['tfidf'])
-
-for t in timings:
-    print(f"{t}: {timings[t]}")
+print(f'Shape prior to reduciton: {numpy.shape(corpus_reduced)}')
+print(f'PCA time: {t2-t1}')
