@@ -1,3 +1,6 @@
+####################################
+# Preprocessing Methods
+####################################
 import json
 import math
 import os
@@ -6,6 +9,8 @@ import string
 import time
 import nltk
 import numpy
+import sys
+import threading
 
 from langdetect import detect
 
@@ -23,9 +28,6 @@ def detect_english(doc):
         return False
     return language == 'en'
 
-def term_frequency(term, doc):
-    return doc[term] / max(doc.values())
-
 def inverse_document_frequency(term, corpus):
     num_occurring = 0
     for doc in corpus:
@@ -33,9 +35,11 @@ def inverse_document_frequency(term, corpus):
             num_occurring += 1
     return math.log2(len(corpus)/num_occurring)
 
-def tfidf(term, corpus, doc, word_document_frequencies):
-    idf = math.log2(len(corpus)/word_document_frequencies[term])
-    return term_frequency(term, doc) * idf
+def tfidf(word_id, vocabulary, doc, corpus_length):
+    idf = math.log2(corpus_length/vocabulary['words'][word_id][1])
+    term_frequency = doc[1][word_id] / max(doc[1].values())
+    return term_frequency * idf
+# tfidf(word_id, vocabulary, doc)
 
 timings = {
     'load': 0,
@@ -44,10 +48,17 @@ timings = {
     'tokenize': 0,
     'stopwords': 0,
     'stemming': 0,
+    'vocab': 0,
+    'prep_doc_inner': 0,
+    'openfile': 0,
+    'detect_english': 0,
 }
 
-def prep_doc(filepath):
+def prep_doc(filepath, vocab):
+    t_prep_doc_inner = time.time()
+    t1 = time.time()
     with open(filepath) as file:
+        timings['openfile'] += time.time()-t1
         t1 = time.time()
         doc = json.load(file)
         timings['load'] += time.time()-t1
@@ -66,8 +77,10 @@ def prep_doc(filepath):
         text = [word for word in text if word != '']
         timings['tokenize'] += time.time()-t1
         # Check langauge - if not English, do not include it
+        t1 = time.time()
         if not detect_english(text):
             return
+        timings['detect_english'] += time.time()-t1
         # remove stopwords
         t1 = time.time()
         stopwords = set(nltk.corpus.stopwords.words('english'))
@@ -78,77 +91,153 @@ def prep_doc(filepath):
         lemmatizer = nltk.wordnet.WordNetLemmatizer()
         text = [lemmatizer.lemmatize(word) for word in text]
         timings['stemming'] += time.time()-t1
-        docindex = dict.fromkeys(set(text))
-        for word in docindex:
-            docindex[word] = 0
+
+        t1 = time.time()
+        doc_words = {}
         for word in text:
-            docindex[word] += 1
-        return docindex
+            word_id = None
+            # add or find in vocab
+            if word in vocabulary['index']:
+                word_id = vocabulary['index'][word]
+            else:
+                # new entry
+                word_id = len(vocabulary['index'])
+                vocabulary['index'][word] = word_id
+                vocabulary['words'][word_id] = [word, 0]
+            # create or increment word in this doc's word list
+            # later the count will be replaced by tfidf
+            if word_id in doc_words:
+                doc_words[word_id] += 1
+            else:
+                doc_words[word_id] = 1
+        # update corpus frequencies - each unique word in this doc adds 1
+        for word in set(text):
+            word_id = vocabulary['index'][word]
+            vocabulary['words'][word_id][1] = vocabulary['words'][word_id][1] + 1
+        timings['vocab'] += time.time()-t1
+        timings['prep_doc_inner'] += time.time()-t_prep_doc_inner
+        return [filepath, doc_words]
 
-def gen_corpus_frequencies_vocab(corpus):
-    t1 = time.time()
-    # get all words in corpus
-    word_sets = [set(doc) for doc in corpus]
-    corpus_words = set()
-    for doc in word_sets:
-        corpus_words.update(doc)
-    timings['collectwords'] = time.time()-t1
-    # get number of docs in which each word occurs
-    t1 = time.time()
-    wordcounts = dict.fromkeys(corpus_words)
-    for word in wordcounts:
-        wordcounts[word] = 0
-    for word_set in word_sets:
-        for word in word_set:
-            wordcounts[word] += 1
-    timings['countwords'] = time.time()-t1
-    return wordcounts, list(corpus_words)
-
-def get_n_docs(n):
+def get_n_docs(n, vocabulary):
     dirpath = '../input/CORD-19-research-challenge/document_parses/pdf_json'
     corpus = []
+
     i = 0
+
+    run_status_checker = True
+    def status_checker():
+        while run_status_checker:
+            print(f"{i} / {n}")
+            time.sleep(1)
+
+    threading.Thread(target=status_checker).start()
+
     for path in os.listdir(dirpath):
         i += 1
         if i > n:
             break
-        corpus.append(prep_doc(os.path.join(dirpath, path)))
-        #filepaths.append(os.path.join(dirpath, path))
+        corpus.append(prep_doc(os.path.join(dirpath, path), vocabulary))
+
+    run_status_checker = False
+
     # Drop all NoneType docs (occurs if not English)
     corpus = [x for x in corpus if x != None]
-    return corpus
+    return corpus, vocabulary
 
-def to_tfidf_vectors(corpus, vocabulary, word_document_frequencies):
-    numerical_corpus = []
-    for doc in corpus:
-        num_vector_doc = []
-        for word in vocabulary:
-            if word not in doc:
-                num_vector_doc.append(0)
-            else:
-                num_vector_doc.append(tfidf(word, corpus, doc, word_document_frequencies))
-        numerical_corpus.append(num_vector_doc)
-    return numerical_corpus
+def doc_tfidf(doc, vocabulary, corpus_length):
+    doc_words = doc[1]
+    for word_id in doc_words:
+        doc_words[word_id] = tfidf(word_id, vocabulary, doc, corpus_length)
+    return doc
+
+def peek_vocab(vocabulary):
+    print('--- First 5 vocabulary entries ---')
+    i = 0
+    for word_id in vocabulary['words']:
+        i += 1
+        if i > 5:
+            break
+        print(vocabulary['words'][word_id])
+
+    print('--- Last 5 vocabulary entries ---')
+    i = 0
+    for word_id in vocabulary['words']:
+        i += 1
+        if i < len(vocabulary['words'])-4:
+            continue
+        print(vocabulary['words'][word_id])
+
+def peek_doc(doc):
+    print('--- Peeking at document ---')
+    print(f"filename: {doc[0]}")
+    print('--- First 5 unique words in doc ---')
+    i = 0
+    for word_id in doc[1]:
+        i += 1
+        if i > 5:
+            continue
+        actualword = vocabulary['words'][word_id][0]
+        print(f"'{actualword}', {doc[1][word_id]}")
+    print('--- Last 5 unique words in doc ---')
+    i = 0
+    for word_id in doc[1]:
+        i += 1
+        if i < len(doc[1])-4:
+            continue
+        actualword = vocabulary['words'][word_id][0]
+        print(f"'{actualword}', {doc[1][word_id]}")
+
+# vocabulary: {
+#     'index': {
+#         word: word_id
+#     },
+#     'words': {
+#         word_id: (word, corpus_freq)
+#     }
+# }
+
+# doc: [
+#     doc_file_name,
+#     {
+#         word_id: doc_freq,
+#     }
+# ]
+
+vocabulary = {
+    'index': {}, # 'actualword': word_id
+    'words': {}, # word_id: ['actualword', corpus_frequency]
+}
 
 num_docs = 10
 t0 = time.time() # Track total time
 
 t1 = time.time()
-corpus = get_n_docs(num_docs)
+corpus, vocabulary = get_n_docs(num_docs, vocabulary)
 t2 = time.time()
 print(f"prepping docs: {t2-t1}")
 
-t1 = time.time()
-word_document_frequencies, vocabulary = gen_corpus_frequencies_vocab(corpus)
-print(f"Number of words in vocabulary: {len(vocabulary)}")
-t2 = time.time()
-print(f"gen_corpus_frequencies: {t2-t1}")
+print(f"Number of words in vocabulary: {len(vocabulary['words'])}")
 
-num_vector_corpus = to_tfidf_vectors(corpus, vocabulary, word_document_frequencies)
+t1 = time.time()
+corpus_length = len(corpus)
+corpus = [doc_tfidf(doc, vocabulary, corpus_length) for doc in corpus]
 t2 = time.time()
-print(numpy.count_nonzero(num_vector_corpus[0]))
+print(f"tfidf: {t2-t1}")
+
+print(f"Corpus size: {corpus_length}")
+
+t2 = time.time()
 print(f'Total time: {t2-t0}')
 
+doc = corpus[0]
+peek_vocab(vocabulary)
+peek_doc(doc)
+
+print('--- Performance ---')
+for timing in timings:
+    print(f"{timing}: {timings[timing]}")
+
+exit()
 '''
 Might be better/faster to use this tfidf method
 https://www.kaggle.com/maksimeren/covid-19-literature-clustering#PCA--&-Clustering
