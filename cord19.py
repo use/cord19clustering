@@ -139,11 +139,18 @@ def get_n_docs(n, vocabulary):
     corpus = []
 
     i = 0
+    stats = {
+        'last_i': 0,
+        'last_time': 0,
+    }
 
     run_status_checker = True
     def status_checker():
         while run_status_checker:
-            print(f"{i} / {n}")
+            completed_per_sec = (i - stats['last_i']) / (time.time() - stats['last_time'])
+            stats['last_i'] = i
+            stats['last_time'] = time.time()
+            print(f"{i} / {n} ({round(completed_per_sec, 1)}/sec)")
             printmem()
             time.sleep(1)
 
