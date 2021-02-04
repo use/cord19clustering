@@ -39,7 +39,6 @@ def tfidf(word_id, vocabulary, doc, corpus_length):
     idf = math.log2(corpus_length/vocabulary['words'][word_id][1])
     term_frequency = doc[1][word_id] / max(doc[1].values())
     return term_frequency * idf
-# tfidf(word_id, vocabulary, doc)
 
 timings = {
     'load': 0,
@@ -52,6 +51,7 @@ timings = {
     'prep_doc_inner': 0,
     'openfile': 0,
     'detect_english': 0,
+    'is_number': 0,
 }
 
 def prep_doc(filepath, vocab):
@@ -86,6 +86,11 @@ def prep_doc(filepath, vocab):
         stopwords = set(nltk.corpus.stopwords.words('english'))
         text = [word for word in text if word not in stopwords]
         timings['stopwords'] += time.time()-t1
+        # remove numbers
+        t1 = time.time()
+        regex = re.compile(f"^[0-9-−]+$")
+        text = [word for word in text if not regex.match(word)]
+        timings['is_number'] += time.time()-t1
         # Lemmatization
         t1 = time.time()
         lemmatizer = nltk.wordnet.WordNetLemmatizer()
