@@ -126,7 +126,11 @@ def prep_doc(filepath, vocab):
             vocabulary['words'][word_id][1] = vocabulary['words'][word_id][1] + 1
         timings['vocab'] += time.time()-t1
         # max_freq is being stored so we don't have to recalculate for the tfidf of every word
-        max_freq = max(doc_words.values())
+        try:
+            max_freq = max(doc_words.values())
+        except:
+            print(f"Problem with doc: {filepath}")
+            return None
         return [filepath, doc_words, max_freq]
 
 def get_n_docs(n, vocabulary):
