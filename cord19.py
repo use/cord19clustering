@@ -37,7 +37,7 @@ def inverse_document_frequency(term, corpus):
 
 def tfidf(word_id, vocabulary, doc, corpus_length):
     idf = math.log2(corpus_length/vocabulary['words'][word_id][1])
-    term_frequency = doc[1][word_id] / max(doc[1].values())
+    term_frequency = doc[1][word_id] / doc[2]
     return term_frequency * idf
 
 timings = {
@@ -121,7 +121,9 @@ def prep_doc(filepath, vocab):
             vocabulary['words'][word_id][1] = vocabulary['words'][word_id][1] + 1
         timings['vocab'] += time.time()-t1
         timings['prep_doc_inner'] += time.time()-t_prep_doc_inner
-        return [filepath, doc_words]
+        # max_freq is being stored so we don't have to recalculate for the tfidf of every word
+        max_freq = max(doc_words.values())
+        return [filepath, doc_words, max_freq]
 
 def get_n_docs(n, vocabulary):
     dirpath = '../input/CORD-19-research-challenge/document_parses/pdf_json'
@@ -205,7 +207,8 @@ def peek_doc(doc):
 #     doc_file_name,
 #     {
 #         word_id: doc_freq,
-#     }
+#     },
+#     max_freq,
 # ]
 
 vocabulary = {
