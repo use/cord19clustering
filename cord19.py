@@ -60,6 +60,8 @@ timings = {
     'is_number': 0,
 }
 
+stopwords = set(nltk.corpus.stopwords.words('english'))
+
 def prep_doc(filepath, vocab):
     t1 = time.time()
     with open(filepath) as file:
@@ -88,7 +90,6 @@ def prep_doc(filepath, vocab):
         timings['detect_english'] += time.time()-t1
         # remove stopwords
         t1 = time.time()
-        stopwords = set(nltk.corpus.stopwords.words('english'))
         text = [word for word in text if word not in stopwords]
         timings['stopwords'] += time.time()-t1
         # remove numbers
