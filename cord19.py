@@ -1,6 +1,3 @@
-####################################
-# Preprocessing Methods
-####################################
 import json
 import math
 import os
@@ -12,6 +9,7 @@ import numpy
 import sys
 import threading
 import psutil
+import random
 
 from langdetect import detect
 
@@ -211,17 +209,17 @@ def peek_doc(doc):
         actualword = vocabulary['words'][word_id][0]
         print(f"'{actualword}', {doc[1][word_id]}")
 
-def vectorize(doc, vocabulary_length):
+def vectorize(doc, vocab_length):
     # Inflate doc to vocabulary length
     doc_vector = []
-    for i in range(vocabulary_length):
-        # If doc contains word in vocab, save it's tfidf
+    for i in range(vocab_length):
         if i in doc[1].keys():
+            # If doc contains word in vocab, save it's tfidf
             doc_vector.append(doc[1][i])
-        # Otherwise add a 0 for that word
         else:
+            # Otherwise add a 0 for that word
             doc_vector.append(0)
-    # return vector of vocabulary length, not just doc length
+    # Return vector of vocabulary length
     return doc_vector
 
 def n_sketches(n, dimension):
@@ -232,7 +230,7 @@ def n_sketches(n, dimension):
         possibilities = [-1, 1]
         # Each sketch is a vector of only +1's and -1's
         for j in range(dimension):
-            sketch.append(possibilities[randint(0,1)])
+            sketch.append(possibilities[random.randint(0,1)])
         sketches.append(sketch)
     return sketches
 
@@ -241,13 +239,13 @@ def project_on_(u,v):
     # Returns the amount (length) of u that is in the direction of v
     return numpy.dot(u,v) / numpy.linalg.norm(v)
 
-def signature(doc, sketches, a):
-    # Each sketch is vocabulary length
-    vocabulary_length = len(sketches[0])
-    doc_vector = vectorize(doc, vocabulary_length)
+def signature(doc, sketches, a, vocab_length):
+    doc_vector = vectorize(doc, vocab_length)
     signature = []
     for sketch in sketches:
+        # Get the amount of doc_vector in the direction of sketch
         projection = project_on_(doc_vector, sketch)
+        # Find which bin the projection lands in based on paramter 'a'
         hash_bin = math.ceil(projection / a)
         signature.append(hash_bin)
     return signature
@@ -261,34 +259,35 @@ def LSH(doc_sig, r):
         bands_hashes.append(hash(frozenset(band)))
     return bands_hashes
 
-def corpus_signatures_LSH(corpus, sketches, a, r):
+def corpus_signatures_LSH(corpus, sketches, a, r, vocab_length):
     # NOTE: This method changes the existing corpus
     # Combines signature generation and LSH steps
     for i in range(len(corpus)):
         doc = corpus[i]
-        doc_name = doc[0]
+        doc_id = doc[0]
         # Get doc signature using vector projections
-        doc_sig = signature(doc, sketches, a)
+        doc_sig = signature(doc, sketches, a, vocab_length)
         # Then do LSH on signatures with b bands to get hashes
         doc_LSH = LSH(doc_sig, r)
-        #doc_LSH = [doc_name % 2, doc_name % 3]
-        corpus[i] = (doc_name, doc_LSH)
+        corpus[i] = (doc_id, doc_LSH)
     return
 
-def find_candidates(corpus):
+def find_candidates(corpus, LSH_length):
     candidates = []
     # Look at all pairs of docs
     for i in range(len(corpus)):
         doc1 = corpus[i]
         for j in range(i+1, len(corpus)):
             doc2 = corpus[j]
-            # Find if any have same hash value for a band
-            for k in range(len(doc1[1])):
+            # Find if any have same hash value for any band
+            for k in range(LSH_length):
                 if doc1[1][k] == doc2[1][k]:
                     candidates.append((doc1[0], doc2[0]))
     return candidates
 
-
+####################################
+# RUNNING
+####################################
 # vocabulary: {
 #     'index': {
 #         word: word_id
@@ -313,7 +312,7 @@ vocabulary = {
 
 printmem()
 
-num_docs = 10
+num_docs = 2
 t0 = time.time() # Track total time
 
 t1 = time.time()
@@ -348,7 +347,8 @@ for timing in timings:
 
 ###########
 
-vocab_size = len(vocabulary['index'])
+# Parameters
+vocab_length = len(vocabulary['index'])
 num_sketches = 6 # Used for signature generation
 a = 1 # This is a parameter for the buckets of the sketches
 b = int(num_sketches / 3) # Number of bands - Set this
@@ -356,42 +356,34 @@ r = int(num_sketches / b) # Number of rows per band - Pass this
 # b * r = len of transformed docs (num_sketches), so 3 rows per band here
 # NOTE: Ensure that b divides transformed doc (num_sketches) size evenly
 
-sketches = n_sketches(num_sketches, vocab_size)
+sketches = n_sketches(num_sketches, vocab_length)
       
-'''
-corpus: [
-        (
-            doc_id, 
-            {
-                word_id : tfidf
-            }
-        )
-    ]
-'''
+# Before transformation
+# doc: [
+#     doc_file_name,
+#     {
+#         word_id: doc_freq,
+#     },
+#     max_freq,
+# ]
       
 # NOTE: This method changes the existing corpus
-corpus_signatures_LSH(corpus, sketches, a, r)
+corpus_signatures_LSH(corpus, sketches, a, r, vocab_length)
       
-'''
-corpus: [
-        (
-            doc_id, 
-            [
-                LSH value for band 0,
-                LSH value for band 1,
-                ...
-            ]
-        )
-    ]
-'''
+# After transformation
+# doc: [
+#     doc_file_name,
+#     [
+#         hash_value_of_band,
+#     ]
+# ]
 
-candidates = find_candidates(corpus)
+candidates = find_candidates(corpus, b)
 
 '''
-candidates: [
-    (doc_id1, doc_id2)
+candidates: 
+[
+    (doc_id1, doc_id2),
 ]
 '''
-
-exit()
-
+print(candidates)
