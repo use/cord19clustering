@@ -11,8 +11,15 @@ import nltk
 import numpy
 import sys
 import threading
+import psutil
 
 from langdetect import detect
+
+process = psutil.Process(os.getpid())
+starting_mem = process.memory_info().rss
+def printmem():
+    mem = process.memory_info().rss - starting_mem
+    print(f" bytes: {mem:,}")
 
 def detect_english(doc):
     # Default langauge is English (most docs are)
@@ -132,6 +139,7 @@ def get_n_docs(n, vocabulary):
     def status_checker():
         while run_status_checker:
             print(f"{i} / {n}")
+            printmem()
             time.sleep(1)
 
     threading.Thread(target=status_checker).start()
@@ -213,6 +221,8 @@ vocabulary = {
     'words': {}, # word_id: ['actualword', corpus_frequency]
 }
 
+printmem()
+
 num_docs = 10
 t0 = time.time() # Track total time
 
@@ -223,11 +233,15 @@ print(f"prepping docs: {t2-t1}")
 
 print(f"Number of words in vocabulary: {len(vocabulary['words'])}")
 
+printmem()
+
 t1 = time.time()
 corpus_length = len(corpus)
 corpus = [doc_tfidf(doc, vocabulary, corpus_length) for doc in corpus]
 t2 = time.time()
 print(f"tfidf: {t2-t1}")
+
+printmem()
 
 print(f"Corpus size: {corpus_length}")
 
