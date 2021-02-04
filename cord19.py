@@ -48,14 +48,12 @@ timings = {
     'stopwords': 0,
     'stemming': 0,
     'vocab': 0,
-    'prep_doc_inner': 0,
     'openfile': 0,
     'detect_english': 0,
     'is_number': 0,
 }
 
 def prep_doc(filepath, vocab):
-    t_prep_doc_inner = time.time()
     t1 = time.time()
     with open(filepath) as file:
         timings['openfile'] += time.time()-t1
@@ -120,7 +118,6 @@ def prep_doc(filepath, vocab):
             word_id = vocabulary['index'][word]
             vocabulary['words'][word_id][1] = vocabulary['words'][word_id][1] + 1
         timings['vocab'] += time.time()-t1
-        timings['prep_doc_inner'] += time.time()-t_prep_doc_inner
         # max_freq is being stored so we don't have to recalculate for the tfidf of every word
         max_freq = max(doc_words.values())
         return [filepath, doc_words, max_freq]
