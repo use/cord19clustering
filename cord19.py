@@ -142,7 +142,7 @@ def get_n_docs(n, vocabulary):
             printmem()
             time.sleep(1)
 
-    threading.Thread(target=status_checker).start()
+    threading.Thread(target=status_checker, daemon=True).start()
 
     for path in os.listdir(dirpath):
         i += 1
