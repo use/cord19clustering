@@ -284,10 +284,6 @@ def find_candidates(corpus, LSH_length):
                 if doc1[1][k] == doc2[1][k]:
                     candidates.append((doc1[0], doc2[0]))
     return candidates
-
-####################################
-# RUNNING
-####################################
 # vocabulary: {
 #     'index': {
 #         word: word_id
