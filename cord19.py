@@ -130,7 +130,7 @@ def prep_doc(filepath, vocab):
         except:
             print(f"Problem with doc: {filepath}")
             return None
-        return [filepath, doc_words, max_freq]
+        return [os.path.basename(filepath), doc_words, max_freq]
 
 def get_n_docs(n, vocabulary):
     dirpath = '../input/CORD-19-research-challenge/document_parses/pdf_json'
