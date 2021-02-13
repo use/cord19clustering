@@ -222,46 +222,44 @@ def vectorize(doc, vocab_length):
     # Return vector of vocabulary length
     return doc_vector
 
-def n_sketches(n, dimension):
+def get_vectors(n, dimension):
     # These are our hash functions
-    sketches = []
+    vectors = []
     for i in range(n):
-        sketch = []
+        vector = []
         possibilities = [-1, 1]
         # Each sketch is a vector of only +1's and -1's
         for j in range(dimension):
-            sketch.append(possibilities[random.randint(0,1)])
-        sketches.append(sketch)
-    return sketches
+            vector.append(possibilities[random.randint(0,1)])
+        vectors.append(vector)
+    return vectors
 
-def project_on_(u,v):
-    # This is the scaler projection
-    # Returns the amount (length) of u that is in the direction of v
-    return numpy.dot(u,v) / numpy.linalg.norm(v)
-
-def signature(doc, sketches, a, vocab_length):
+def signature(doc, vectors, a, vocab_length):
+    def project_on_(u,v):
+        # This is the scaler projection
+        # Returns the amount (length) of u that is in the direction of v
+        return numpy.dot(u,v) / numpy.linalg.norm(v)
     doc_vector = vectorize(doc, vocab_length)
     signature = []
-    for sketch in sketches:
+    for vector in vectors:
         # Get the amount of doc_vector in the direction of sketch
-        projection = project_on_(doc_vector, sketch)
+        projection = project_on_(doc_vector, vector)
         # Find which bin the projection lands in based on paramter 'a'
         hash_bin = math.ceil(projection / a)
         signature.append(hash_bin)
     return signature
 
-def LSH(doc_sig, r):
-    bands_hashes = []
-    for i in range(b):
-        band = doc_sig[i:i+r]
-        # Use the built-in Python hash function to hash each band
-        # We can change this as needed
-        bands_hashes.append(hash(frozenset(band)))
-    return bands_hashes
-
 def corpus_signatures_LSH(corpus, sketches, a, r, vocab_length):
-    # NOTE: This method changes the existing corpus
     # Combines signature generation and LSH steps
+    def LSH(doc_sig, r):
+        bands_hashes = []
+        for i in range(b):
+            band = doc_sig[i:i+r]
+            # Use the built-in Python hash function to hash each band
+            # We can change this as needed
+            bands_hashes.append(hash(frozenset(band)))
+        return bands_hashes
+    corpus_new = []
     for i in range(len(corpus)):
         doc = corpus[i]
         doc_id = doc[0]
@@ -269,21 +267,49 @@ def corpus_signatures_LSH(corpus, sketches, a, r, vocab_length):
         doc_sig = signature(doc, sketches, a, vocab_length)
         # Then do LSH on signatures with b bands to get hashes
         doc_LSH = LSH(doc_sig, r)
-        corpus[i] = (doc_id, doc_LSH)
-    return
+        corpus_new.append((doc_id, doc_LSH))
+    return corpus_new
 
 def find_candidates(corpus, LSH_length):
-    candidates = []
+    candidates = {}
     # Look at all pairs of docs
     for i in range(len(corpus)):
         doc1 = corpus[i]
-        for j in range(i+1, len(corpus)):
-            doc2 = corpus[j]
-            # Find if any have same hash value for any band
-            for k in range(LSH_length):
-                if doc1[1][k] == doc2[1][k]:
-                    candidates.append((doc1[0], doc2[0]))
+        doc1_matches = []
+        for j in range(len(corpus)):
+            if j != i:
+                doc2 = corpus[j]
+                # Find if any have same hash value for any band
+                for k in range(LSH_length):
+                    if doc1[1][k] == doc2[1][k]:
+                        doc1_matches.append(doc2[0])
+        candidates[doc1[0]] = doc1_matches
     return candidates
+
+def group_candidates(candidates):
+    # TODO: FIX
+    # Find groups (clusters) of documents that are all similar to each other
+    grouped_candidates = {}
+    group_id = 0
+    # Once we consider a doc, we do not want to consider it again
+    # A document can only belong to one group (cluster)
+    exclusion_list = []
+    for doc1 in list(candidates.keys()):
+        docs_similar_to_doc1 = candidates[doc1]
+        to_check = [x for x in docs_similar_to_doc1 if x not in exclusion_list]
+        doc1_group = set([doc1])
+        # Check if each doc that is similar to doc1 is also similar to other docs in to_check
+        for i in range(len(to_check)):
+            for j in range(i, len(to_check)):
+                # If these document appear in each other's similarity lists, add them to group
+                if to_check[j] in candidates[to_check[i]]:
+                   doc1_group.add(to_check[i])
+                   doc1_group.add(to_check[j])
+        grouped_candidates[group_id] = list(doc1_group)
+        exclusion_list.append(doc1)
+        group_id += 1
+    return grouped_candidates
+
 # vocabulary: {
 #     'index': {
 #         word: word_id
@@ -343,43 +369,49 @@ for timing in timings:
 
 ###########
 
-# Parameters
-vocab_length = len(vocabulary['index'])
-num_sketches = 6 # Used for signature generation
-a = 1 # This is a parameter for the buckets of the sketches
-b = int(num_sketches / 3) # Number of bands - Set this
-r = int(num_sketches / b) # Number of rows per band - Pass this
-# b * r = len of transformed docs (num_sketches), so 3 rows per band here
-# NOTE: Ensure that b divides transformed doc (num_sketches) size evenly
+# Parameters for Signature Generation and LSH
+a = 1 # This is the bucket size for signature generation
+b = 2 # Number of bands: increase -> increase likelihood of finding documents are similar
+r = 6 # Number of rows per band: increase -> decrease likelihood of finding documents are similar
+# b * r = length of transformed docs = number of random vectors
 
-sketches = n_sketches(num_sketches, vocab_length)
+t1 = time.time()
+vectors = get_vectors(b*r, len(vocabulary['index']))
+t2 = time.time()
+print(f"random vectors: {t2-t1}")
+
+t1 = time.time()
+corpus_LSH_results = corpus_signatures_LSH(corpus, vectors, a, r, len(vocabulary['index']))
+t2 = time.time()
+print(f"signatures + LSH: {t2-t1}")
       
-# Before transformation
-# doc: [
-#     doc_file_name,
-#     {
-#         word_id: doc_freq,
-#     },
-#     max_freq,
-# ]
-      
-# NOTE: This method changes the existing corpus
-corpus_signatures_LSH(corpus, sketches, a, r, vocab_length)
-      
-# After transformation
-# doc: [
+# corpus_LSH_results: [
 #     doc_file_name,
 #     [
-#         hash_value_of_band,
+#         hash_value_of_band,...
 #     ]
 # ]
 
-candidates = find_candidates(corpus, b)
-
 '''
 candidates: 
-[
-    (doc_id1, doc_id2),
-]
+{
+    doc_id1: 
+    [
+        all similar docs to doc1
+    ]
+}
 '''
-print(candidates)
+
+t1 = time.time()
+grouped_candidates = group_candidates(find_candidates(corpus_LSH_results, b))
+t2 = time.time()
+print(f"candidates + grouping: {t2-t1}")
+
+'''
+grouped_candidates: 
+{
+    group_id : [doc_id1, doc_id2,...]
+}
+'''
+
+# TODO: write method to get top 5 words in each group (maybe just top 5 in first document of group)
