@@ -10,6 +10,8 @@ import sys
 import threading
 import psutil
 import random
+import pathlib
+import pickle
 
 from langdetect import detect
 
@@ -165,6 +167,33 @@ def get_n_docs(n, vocabulary):
     # Drop all NoneType docs (occurs if not English)
     corpus = [x for x in corpus if x != None]
     return corpus, vocabulary
+
+def save_project(vocab, corpus, output_folder_path):
+    corpus_sub_folder = os.path.join(output_folder_path, 'corpus')
+    pathlib.Path(corpus_sub_folder).mkdir(parents=True, exist_ok=True)
+    for doc in corpus:
+        filename = doc[0] + ".pickle"
+        file_path = os.path.join(corpus_sub_folder, filename)
+        print("opening " + file_path)
+        with open(file_path, 'wb') as out_file:
+            pickle.dump(doc, out_file)
+
+    vocab_file_name = 'vocab.pickle'
+    vocab_file_path = os.path.join(output_folder_path, vocab_file_name)
+    with open(vocab_file_path, 'wb') as out_file:
+        pickle.dump(vocab, out_file)
+
+def load_project(input_folder_path):
+    corpus_path = os.path.join(input_folder_path, 'corpus')
+    corpus = []
+    for filename in os.listdir(corpus_path):
+        with open(os.path.join(corpus_path, filename), 'rb') as in_file:
+            corpus.append(pickle.load(in_file))
+    vocab_file_name = 'vocab.pickle'
+    vocab_file_path = os.path.join(input_folder_path, vocab_file_name)
+    with open(vocab_file_path, 'rb') as in_file:
+        vocab = pickle.load(in_file)
+    return vocab, corpus
 
 def doc_tfidf(doc, vocabulary, corpus_length):
     doc_words = doc[1]
