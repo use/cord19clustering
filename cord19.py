@@ -174,7 +174,6 @@ def save_project(vocab, corpus, output_folder_path):
     for doc in corpus:
         filename = doc[0] + ".pickle"
         file_path = os.path.join(corpus_sub_folder, filename)
-        print("opening " + file_path)
         with open(file_path, 'wb') as out_file:
             pickle.dump(doc, out_file)
 
