@@ -100,8 +100,22 @@ print(f"candidates + grouping: {t2-t1}")
 '''
 grouped_candidates: 
 {
-    group_id : [doc_id1, doc_id2,...]
+    group_id : [doc1_corpus_index, doc2_corpus_index,...]
 }
 '''
 
-# TODO: write method to get top 5 words in each group (maybe just top 5 in first document of group)
+t1 = time.time()
+groups = top_group_words(grouped_candidates, corpus, vocabulary)
+t2 = time.time()
+print(f"finding group words: {t2-t1}")
+'''
+groups: 
+[
+    (
+        [doc1_corpus_index, doc2_corpus_index,...],
+        [largest_tfidf_word_doc1, largest_tfidf_word_doc2,...]
+    )
+]
+'''
+print('\nGroups and top words:')
+print(groups)
