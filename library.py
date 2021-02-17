@@ -277,7 +277,7 @@ def signature(doc, vectors, a, vocab_length):
         signature.append(hash_bin)
     return signature
 
-def corpus_signatures_LSH(corpus, sketches, a, r, b, vocab_length):
+def corpus_signatures_LSH(corpus, sketches, a, r, vocab_length):
     # Combines signature generation and LSH steps
     def LSH(doc_sig, r):
         bands_hashes = []
@@ -285,7 +285,7 @@ def corpus_signatures_LSH(corpus, sketches, a, r, b, vocab_length):
             band = doc_sig[i:i+r]
             # Use the built-in Python hash function to hash each band
             # We can change this as needed
-            bands_hashes.append(hash(frozenset(band)))
+            bands_hashes.append(hash(tuple(band)))
         return bands_hashes
     corpus_new = []
     for i in range(len(corpus)):
@@ -307,33 +307,60 @@ def find_candidates(corpus, LSH_length):
         for j in range(len(corpus)):
             if j != i:
                 doc2 = corpus[j]
-                # Find if any have same hash value for any band
+                # Find if doc1 and doc2 have same hash value for any band
                 for k in range(LSH_length):
                     if doc1[1][k] == doc2[1][k]:
-                        doc1_matches.append(doc2[0])
-        candidates[doc1[0]] = doc1_matches
+                        #doc1_matches.append(doc2[0])
+                        doc1_matches.append(j)
+        #candidates[doc1[0]] = doc1_matches
+        candidates[i] = doc1_matches
     return candidates
 
 def group_candidates(candidates):
-    # TODO: FIX
     # Find groups (clusters) of documents that are all similar to each other
     grouped_candidates = {}
     group_id = 0
     # Once we consider a doc, we do not want to consider it again
     # A document can only belong to one group (cluster)
+    # After we have included a document in a cluster, add it to the exclusion_list so it won't be considered for future clusters
     exclusion_list = []
     for doc1 in list(candidates.keys()):
-        docs_similar_to_doc1 = candidates[doc1]
-        to_check = [x for x in docs_similar_to_doc1 if x not in exclusion_list]
-        doc1_group = set([doc1])
-        # Check if each doc that is similar to doc1 is also similar to other docs in to_check
-        for i in range(len(to_check)):
-            for j in range(i, len(to_check)):
-                # If these document appear in each other's similarity lists, add them to group
-                if to_check[j] in candidates[to_check[i]]:
-                   doc1_group.add(to_check[i])
-                   doc1_group.add(to_check[j])
-        grouped_candidates[group_id] = list(doc1_group)
-        exclusion_list.append(doc1)
-        group_id += 1
+        if doc1 not in exclusion_list:
+            docs_similar_to_doc1 = candidates[doc1]
+            to_check = [x for x in docs_similar_to_doc1 if x not in exclusion_list]
+            doc1_group = [doc1]
+            # Check if doc_i that is similar to doc1 is also similar to all other docs in the cluster
+            for doc_i in to_check:
+                for clustered_doc in doc1_group:
+                    # If these document appear in each other's similarity lists, add them to group
+                    if doc_i in candidates[clustered_doc]:
+                        doc1_group.append(doc_i)
+                        # Remove those documents from pool
+                        exclusion_list.append(doc_i)            
+            grouped_candidates[group_id] = list(set(doc1_group))
+            exclusion_list.append(doc1)
+            group_id += 1
     return grouped_candidates
+
+def top_group_words(grouped_candidates, corpus, vocabulary):
+    new_group_obj = []
+    # A word can only be associated with one cluster - first come, first served
+    word_exclusion_list = []
+    for group_num in grouped_candidates:
+        group_docs = grouped_candidates[group_num]
+        group_words = []
+        for doc in group_docs:
+            # Add largest tfidf word from each doc that is not already used, up to 10 words
+            if len(group_words) < 10:
+                added = False
+                i = -1
+                while not added:
+                    largest_tfidf_word = vocabulary['words'][sorted(corpus[0][1], key=corpus[0][1].get)[i]][0]
+                    if largest_tfidf_word not in word_exclusion_list:
+                        group_words.append(largest_tfidf_word)
+                        word_exclusion_list.append(largest_tfidf_word)
+                        added = True
+                    else:
+                        i -= 1
+        new_group_obj.append((group_docs, group_words))
+    return new_group_obj
