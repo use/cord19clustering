@@ -38,11 +38,12 @@ def find_candidates(docs_with_bands):
     groups = {}
     for doc_with_bands in docs_with_bands:
         doc, bands = doc_with_bands
-        for band in bands:
-            if band in groups:
-                groups[band].append(doc)
+        for index, band in bands:
+            key = (index, band)
+            if key in groups:
+                groups[key].append(doc)
             else:
-                groups[band] = [doc]
+                groups[key] = [doc]
     groups = filter(lambda group: len(group) > 1, groups.values())
     return groups
 
