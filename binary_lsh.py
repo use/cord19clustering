@@ -16,7 +16,7 @@ docs_dir = '../input/CORD-19-research-challenge/document_parses/pdf_json'
 
 def get_signature(doc, rands_a, rands_b, sig_size, modulus):
     words = doc[1]
-    sig = [min([(rands_b[i] * word + rands_b[i]) % modulus for word in words])
+    sig = [min([(rands_a[i] * word + rands_b[i]) % modulus for word in words])
            for i in range(sig_size)]
     return sig
 
