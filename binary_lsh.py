@@ -107,7 +107,7 @@ if __name__ == '__main__':
     # serial approach
     # docs_with_bands = [(doc, hash_bands(get_signature(doc, A, B, SIGNATURE_SIZE, MODULUS), NUM_BANDS)) for doc in corpus]
     # parallel approach
-    with multiprocessing.Pool(4) as pool:
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
         docs_with_bands = pool.map(
             functools.partial(
                 hash_doc,
