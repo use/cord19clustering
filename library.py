@@ -182,10 +182,15 @@ def save_project(vocab, corpus, output_folder_path):
     with open(vocab_file_path, 'wb') as out_file:
         pickle.dump(vocab, out_file)
 
-def load_project(input_folder_path):
+def load_project(input_folder_path, num_docs=None):
+    """ num_docs won't make sense for tfidf, since vocab IDF was based on whole corpus """
     corpus_path = os.path.join(input_folder_path, 'corpus')
     corpus = []
+    i = 0
     for filename in os.listdir(corpus_path):
+        i += 1
+        if num_docs is not None and i > num_docs:
+            break
         with open(os.path.join(corpus_path, filename), 'rb') as in_file:
             corpus.append(pickle.load(in_file))
     vocab_file_name = 'vocab.pickle'
