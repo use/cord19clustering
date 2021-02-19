@@ -3,8 +3,9 @@ import time
 from pprint import pp
 
 t = time.time()
-vocab, corpus = library.load_project('data', num_docs=1000)
+vocab, corpus = library.load_project('data', num_docs=64000)
 print(f"Loaded project {time.time() - t}")
+print(f"{(len(corpus)):,} docs")
 
 print("Removing low frequency words")
 length_1 = len(vocab['index'])
@@ -24,5 +25,5 @@ print(f"Removed {(length_1 - length_2):,} words")
 avg_unique_words = sum([len(doc[1]) for doc in corpus]) / len(corpus)
 print(f"Avg unique words per doc: {avg_unique_words:,}")
 
-pp(removed_words[0:10])
-pp(removed_words[-10:-1])
+pp(list(removed_words)[0:10])
+pp(list(removed_words)[-10:-1])

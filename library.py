@@ -135,20 +135,19 @@ def prep_doc(filepath, vocab):
         return [os.path.basename(filepath), doc_words, max_freq]
 
 def remove_low_frequency_words(vocab, corpus, min_frequency=2):
-    removed_words = []
+    removed_words = set()
+    removed_word_ids = set()
     for word_id in vocab['words'].copy():
         word, freq = vocab['words'][word_id]
         if freq < min_frequency:
-            removed_words.append(word)
+            removed_words.add(word)
+            removed_word_ids.add(word_id)
             del vocab['words'][word_id]
             del vocab['index'][word]
-            num_deleted = 0
-            for doc in corpus:
-                if word_id in doc[1]:
-                    del doc[1][word_id]
-                    num_deleted += 1
-                    if num_deleted >= min_frequency - 1:
-                        break
+    for doc in corpus:
+        words_to_remove = removed_word_ids.intersection(set(doc[1]))
+        for word_id in words_to_remove:
+            del doc[1][word_id]
     return vocab, corpus, removed_words
 
 def get_n_docs(n, vocabulary):
