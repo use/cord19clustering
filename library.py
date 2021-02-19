@@ -6,7 +6,6 @@ import string
 import time
 import nltk
 import numpy
-import sys
 import threading
 import psutil
 import random
@@ -282,7 +281,7 @@ def signature(doc, vectors, a, vocab_length):
         signature.append(hash_bin)
     return signature
 
-def corpus_signatures_LSH(corpus, sketches, a, r, vocab_length):
+def corpus_signatures_LSH(corpus, vectors, a, r, b, vocab_length):
     # Combines signature generation and LSH steps
     def LSH(doc_sig, r):
         bands_hashes = []
@@ -297,7 +296,7 @@ def corpus_signatures_LSH(corpus, sketches, a, r, vocab_length):
         doc = corpus[i]
         doc_id = doc[0]
         # Get doc signature using vector projections
-        doc_sig = signature(doc, sketches, a, vocab_length)
+        doc_sig = signature(doc, vectors, a, vocab_length)
         # Then do LSH on signatures with b bands to get hashes
         doc_LSH = LSH(doc_sig, r)
         corpus_new.append((doc_id, doc_LSH))
