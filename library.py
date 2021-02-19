@@ -134,6 +134,23 @@ def prep_doc(filepath, vocab):
             return None
         return [os.path.basename(filepath), doc_words, max_freq]
 
+def remove_low_frequency_words(vocab, corpus, min_frequency=2):
+    removed_words = []
+    for word_id in vocab['words'].copy():
+        word, freq = vocab['words'][word_id]
+        if freq < min_frequency:
+            removed_words.append(word)
+            del vocab['words'][word_id]
+            del vocab['index'][word]
+            num_deleted = 0
+            for doc in corpus:
+                if word_id in doc[1]:
+                    del doc[1][word_id]
+                    num_deleted += 1
+                    if num_deleted >= min_frequency - 1:
+                        break
+    return vocab, corpus, removed_words
+
 def get_n_docs(n, vocabulary):
     dirpath = '../input/CORD-19-research-challenge/document_parses/pdf_json'
     corpus = []
