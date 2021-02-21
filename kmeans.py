@@ -40,7 +40,8 @@ def find_centroid(cluster: List[Doc]) -> Doc:
     for word in all_words:
         word_sum = sum([doc[1][word] for doc in cluster if word in doc[1]])
         word_avg = word_sum / doc_count
-        result[word] = word_avg
+        if word_avg > .05:
+            result[word] = word_avg
     print(f"centroid length: {len(result)}")
     return ('centroid', result, 0)
 
