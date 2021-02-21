@@ -198,12 +198,15 @@ def save_project(vocab, corpus, output_folder_path):
     with open(vocab_file_path, 'wb') as out_file:
         pickle.dump(vocab, out_file)
 
-def load_project(input_folder_path, num_docs=None):
+def load_project(input_folder_path, num_docs=None, random_files=False):
     """ num_docs won't make sense for tfidf, since vocab IDF was based on whole corpus """
     corpus_path = os.path.join(input_folder_path, 'corpus')
     corpus = []
     i = 0
-    for filename in os.listdir(corpus_path):
+    filenames = os.listdir(corpus_path)
+    if random_files and num_docs > 0:
+        filenames = random.sample(filenames, num_docs)
+    for filename in filenames:
         i += 1
         if num_docs is not None and i > num_docs:
             break

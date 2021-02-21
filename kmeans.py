@@ -154,13 +154,13 @@ def sub_corpus_frequencies(items: List[Doc]) -> Dict[int, int]:
 if __name__ == '__main__':
     t0 = time.time()
     items = []
-    vocab, docs = library.load_project('data_after_removing_words', 5000)
+    vocab, docs = library.load_project('data_after_removing_words', 5000, random_files=True)
 
     sub_corpus_freqs = sub_corpus_frequencies(docs)
 
     # create the clusters multiple times to compare
     for i in range(1):
-        results = find_clusters(docs, 10)
+        results = find_clusters(docs, 15)
         print(
             'sorted cluster sizes:',
             sorted([len(cluster) for cluster in results.clusters], reverse=True),
