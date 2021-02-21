@@ -1,9 +1,9 @@
 import csv
 import random
-from dataclasses import dataclass
-from typing import Dict, List, Tuple
 import time
+from dataclasses import dataclass
 from pprint import pp
+from typing import Dict, List, Tuple
 
 import library
 
