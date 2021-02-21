@@ -53,10 +53,9 @@ def find_centroid(cluster: List[Doc]) -> Doc:
     return ('centroid', result, 0)
 
 timings = {
-    'clusters': [],
-    'centroids': 0,
-    'assign': 0,
-    'dot product': 0,
+    'centroids': 0.0,
+    'assign': 0.0,
+    'dot product': 0.0,
 }
 def find_clusters(items: List[Doc], k: int):
     centroids = None
@@ -64,7 +63,7 @@ def find_clusters(items: List[Doc], k: int):
 
     # index 0: index of prev cluster
     # index 1: stream of times landed in the same cluster
-    item_meta = [(-1, 0) for _ in range(len(items))]
+    item_meta: List[Tuple[int, int]] = [(-1, 0) for _ in range(len(items))]
     streak_threshold = 4 # after this many times in the same cluster, let's stop checking this item
     iterations = 0
     while True:
