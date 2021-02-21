@@ -388,3 +388,11 @@ def top_group_words(grouped_candidates, corpus, vocabulary):
                         i -= 1
         new_group_obj.append((group_docs, group_words))
     return new_group_obj
+
+def get_doc_title_from_filename(filename, docs_dir):
+    path = os.path.join(docs_dir, filename)
+    doc = json.load(open(path))
+    return doc['metadata']['title']
+
+def lookup_word(word_id, vocabulary):
+    return vocabulary['words'][word_id][0]

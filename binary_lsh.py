@@ -62,12 +62,6 @@ def get_vocab_length(corpus):
     return len(vocab)
 
 
-def get_doc_title_from_filename(filename):
-    path = os.path.join(docs_dir, filename)
-    doc = json.load(open(path))
-    return doc['metadata']['title']
-
-
 def hash_doc(doc, a=[], b=[], sig_size=0, modulus=0, num_bands=0):
     return (doc, hash_bands(get_signature(doc, a, b, sig_size, modulus), num_bands))
 
