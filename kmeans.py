@@ -32,17 +32,24 @@ def item_distance_dot_product(a: Doc, b: Doc) -> float:
     return -sum(a[1][word] * b[1][word] for word in shared_words)
 
 def find_centroid(cluster: List[Doc]) -> Doc:
+    t = time.time()
     all_words = set()
     for doc in cluster:
         all_words.update(doc[1])
-    result = {}
-    doc_count = len(cluster)
-    for word in all_words:
-        word_sum = sum([doc[1][word] for doc in cluster if word in doc[1]])
-        word_avg = word_sum / doc_count
-        if word_avg > .05:
-            result[word] = word_avg
-    print(f"centroid length: {len(result)}")
+    result = dict.fromkeys(all_words)
+    for word in result:
+        result[word] = 0
+    for doc in cluster:
+        for word in doc[1]:
+            result[word] += doc[1][word]
+    threshold = .05
+    for word in set(result):
+        avg = result[word] / len(cluster)
+        if avg > threshold:
+            result[word] = avg
+        else:
+            del result[word]
+    print(f"centroid length: {len(result)} ({(time.time() - t):.2f}s)")
     return ('centroid', result, 0)
 
 timings = {
@@ -84,7 +91,8 @@ def find_clusters(items: List[Doc], k: int):
             new_clusters[selected_index].append(item)
         timings['assign'] += time.time() - t
 
-        print(f"iteration {iterations} {(time.time()-iteration_timer):.3f}")
+        lengths = [len(cluster) for cluster in new_clusters]
+        print(f"iteration {iterations} ({(time.time()-iteration_timer):.2f}s) {lengths}")
 
         if new_clusters == old_clusters:
             # the following two lines can be used to add the centroids at index 0, so you can graph them
@@ -134,7 +142,7 @@ def sub_corpus_frequencies(items: List[Doc]) -> Dict[int, int]:
 if __name__ == '__main__':
     t0 = time.time()
     items = []
-    vocab, docs = library.load_project('data_after_removing_words', 500)
+    vocab, docs = library.load_project('data_after_removing_words', 5000)
 
     sub_corpus_freqs = sub_corpus_frequencies(docs)
 
