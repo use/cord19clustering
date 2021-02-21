@@ -62,6 +62,10 @@ def find_clusters(items: List[Doc], k: int):
     centroids = None
     old_clusters = [[] for x in range(k)]
 
+    # index 0: index of prev cluster
+    # index 1: stream of times landed in the same cluster
+    item_meta = [(-1, 0) for _ in range(len(items))]
+    streak_threshold = 4 # after this many times in the same cluster, let's stop checking this item
     iterations = 0
     while True:
         iterations += 1
@@ -74,25 +78,34 @@ def find_clusters(items: List[Doc], k: int):
         iteration_timer = time.time()
         t = time.time()
         # assign objects to clusters based on closest centroid
-        inner_loop = 0
-        for item in items:
+        skipped = 0
+        for item_index, item in enumerate(items):
             lowest_distance = -1
             selected_index = -1
-
-            # find closest centroid to this object
-            for index, centroid in enumerate(centroids):
-                inner_loop += 1
-                t1 = time.time()
-                distance = item_distance_dot_product(item, centroid)
-                timings['dot product'] += time.time() - t1
-                if lowest_distance == -1 or distance < lowest_distance:
-                    lowest_distance = distance
-                    selected_index = index
+            
+            prev_index, streak = item_meta[item_index]
+            if streak > streak_threshold:
+                selected_index = prev_index
+                skipped += 1
+            else:
+                # find closest centroid to this object
+                for index, centroid in enumerate(centroids):
+                    t1 = time.time()
+                    distance = item_distance_dot_product(item, centroid)
+                    timings['dot product'] += time.time() - t1
+                    if lowest_distance == -1 or distance < lowest_distance:
+                        lowest_distance = distance
+                        selected_index = index
+                if prev_index == selected_index:
+                    streak += 1
+                else:
+                    streak = 0
+                item_meta[item_index] = (selected_index, streak)
             new_clusters[selected_index].append(item)
         timings['assign'] += time.time() - t
 
         lengths = [len(cluster) for cluster in new_clusters]
-        print(f"iteration {iterations} ({(time.time()-iteration_timer):.2f}s) {lengths}")
+        print(f"iteration {iterations} ({(time.time()-iteration_timer):.2f}s) {lengths} skipped {skipped}")
 
         if new_clusters == old_clusters:
             # the following two lines can be used to add the centroids at index 0, so you can graph them
