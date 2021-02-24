@@ -29,7 +29,11 @@ def item_distance_euclidian(a: Doc, b: Doc) -> float:
 
 def item_distance_dot_product(a: Doc, b: Doc) -> float:
     shared_words = set(a[1]).intersection(b[1])
-    return -sum(a[1][word] * b[1][word] for word in shared_words)
+    similarity = sum(a[1][word] * b[1][word] for word in shared_words)
+    if similarity == 0:
+        return 1
+    else:
+        return 1/similarity
 
 def find_centroid(cluster: List[Doc]) -> Doc:
     t = time.time()
