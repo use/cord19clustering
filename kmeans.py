@@ -15,7 +15,7 @@ class ClusterResults:
     clusters: List[List[Doc]]
     centroids: List[Doc]
     iterations: int
-    #wcsse: float
+    wcsse: float
 
 def item_distance_euclidian(a: Doc, b: Doc) -> float:
     a_words = set(a[1])
@@ -115,11 +115,18 @@ def find_clusters(items: List[Doc], k: int):
             # the following two lines can be used to add the centroids at index 0, so you can graph them
             # for index, cluster in enumerate(new_clusters):
             #     cluster.insert(0, centroids[index])
+            t = time.time()
+            wcsse = 0
+            for index, cluster in enumerate(new_clusters):
+                for doc in cluster:
+                    wcsse += (item_distance_dot_product(doc, centroids[index])) ** 2
+            print(f"wcsse ({(time.time()-t):.2f}s)")
+            print(f"wcsse total: {wcsse:,.2f}")
             return ClusterResults(
                 clusters = new_clusters,
                 iterations = iterations,
                 centroids = centroids,
-                # wcsse = wcsse
+                wcsse = wcsse,
             )
         t = time.time()
         centroids = [find_centroid(cluster) for cluster in new_clusters]
