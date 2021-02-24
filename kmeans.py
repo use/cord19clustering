@@ -15,6 +15,7 @@ class ClusterResults:
     clusters: List[List[Doc]]
     centroids: List[Doc]
     iterations: int
+    #wcsse: float
 
 def item_distance_euclidian(a: Doc, b: Doc) -> float:
     a_words = set(a[1])
@@ -33,7 +34,7 @@ def item_distance_dot_product(a: Doc, b: Doc) -> float:
     if similarity == 0:
         return 1
     else:
-        return 1/similarity
+        return abs(1/similarity)
 
 def find_centroid(cluster: List[Doc]) -> Doc:
     t = time.time()
@@ -118,6 +119,7 @@ def find_clusters(items: List[Doc], k: int):
                 clusters = new_clusters,
                 iterations = iterations,
                 centroids = centroids,
+                # wcsse = wcsse
             )
         t = time.time()
         centroids = [find_centroid(cluster) for cluster in new_clusters]
@@ -155,6 +157,12 @@ def sub_corpus_frequencies(items: List[Doc]) -> Dict[int, int]:
         freqs[word] = freqs[word] / len(items)
     return freqs
 
+def optimal_k_WCSSE(K: int, WCSSE: List[float], threshold: float):
+    for i in range(1,len(WCSSE)):
+        if WCSSE[i-1]-WCSSE[i] < threshold:
+            return K[i-1]
+    return len(WCSSE)
+
 if __name__ == '__main__':
     t0 = time.time()
     docs_dir = '../input/CORD-19-research-challenge/document_parses/pdf_json'
@@ -169,52 +177,60 @@ if __name__ == '__main__':
     print(f"recalc frequencies {time.time()-t:.2f}")
 
     # create the clusters multiple times to compare
-    for i in range(1):
-        results = find_clusters(docs, 10)
-        print(
-            'sorted cluster sizes:',
-            sorted([len(cluster) for cluster in results.clusters], reverse=True),
-            f"(required {results.iterations} iterations)"
-        )
-        pp(timings, indent=1)
-        clusters = []
-        for cluster in results.clusters:
-            clusters.append({
-                'cluster': cluster,
-                'length': len(cluster),
-                'common_words': common_words_in_cluster(cluster, sub_corpus_freqs),
-            })
-        clusters.sort(key=lambda c: -c['length'])
-        for index, cluster in enumerate(clusters):
-            print(f"------- Cluster {index} -------")
-            print(f"Size: {cluster['length']:,}")
-            print(f"Defining words:")
-            print("  - " + ", ".join([f"{word[0]} +{round(word[1]*100)}%" for word in cluster['common_words'][:10]]))
-            print('5 random papers')
-            sample = random.sample(cluster['cluster'], 5)
-            for doc in sample:
-                print(f"  - {library.get_doc_title_from_filename(doc[0], docs_dir)}")
+    kmax = 10
+    K = []
+    WCSSE = []
+    for k in range(1,kmax):
+        K.append(k)
+        results = find_clusters(docs, k)
+        #WCSSE.append(results.wcsse)
+    scaled_WCSSE = [x/WCSSE[0] for x in WCSSE]
+    optimal_k = optimal_k_WCSSE(K,scaled_WCSSE,0.05)
+    results = find_clusters(docs, optimal_k)
+    print(
+        'sorted cluster sizes:',
+        sorted([len(cluster) for cluster in results.clusters], reverse=True),
+        f"(required {results.iterations} iterations)"
+    )
+    pp(timings, indent=1)
+    clusters = []
+    for cluster in results.clusters:
+        clusters.append({
+            'cluster': cluster,
+            'length': len(cluster),
+            'common_words': common_words_in_cluster(cluster, sub_corpus_freqs),
+        })
+    clusters.sort(key=lambda c: -c['length'])
+    for index, cluster in enumerate(clusters):
+        print(f"------- Cluster {index} -------")
+        print(f"Size: {cluster['length']:,}")
+        print(f"Defining words:")
+        print("  - " + ", ".join([f"{word[0]} +{round(word[1]*100)}%" for word in cluster['common_words'][:10]]))
+        print('5 random papers')
+        sample = random.sample(cluster['cluster'], 5)
+        for doc in sample:
+            print(f"  - {library.get_doc_title_from_filename(doc[0], docs_dir)}")
 
-        freqs_list = [(library.lookup_word(word, vocab), sub_corpus_freqs[word]) for word in sub_corpus_freqs]
-        freqs_sample = random.sample(freqs_list, 5)
-        freqs_top_10 = sorted(freqs_list, key=lambda word: word[1], reverse=True)[:10]
+    freqs_list = [(library.lookup_word(word, vocab), sub_corpus_freqs[word]) for word in sub_corpus_freqs]
+    freqs_sample = random.sample(freqs_list, 5)
+    freqs_top_10 = sorted(freqs_list, key=lambda word: word[1], reverse=True)[:10]
 
-        print(f"------- Corpus Stats -------")
-        print("10 most frequent words")
-        print(freqs_top_10)
-        print("Random sample of word frequencies")
-        print(freqs_sample)
-        lookup_words = ['coronavirus', 'covid19', 'government', 'policy', 'respiratory']
-        print("Frequencies of some meaningful words:")
-        print(", ".join([f"{word} {sub_corpus_freqs[vocab['index'][word]]}" for word in lookup_words]))
+    print(f"------- Corpus Stats -------")
+    print("10 most frequent words")
+    print(freqs_top_10)
+    print("Random sample of word frequencies")
+    print(freqs_sample)
+    lookup_words = ['coronavirus', 'covid19', 'government', 'policy', 'respiratory']
+    print("Frequencies of some meaningful words:")
+    print(", ".join([f"{word} {sub_corpus_freqs[vocab['index'][word]]}" for word in lookup_words]))
 
-        print(f"total time: {time.time() - t0}")
+    print(f"total time: {time.time() - t0}")
 
-        exit()
-        # only save the results of the first attempt
-        if i == 0:
-            for index, cluster in enumerate(results.clusters):
-                with open(f"cluster-{index+1}.csv", 'w', newline='') as outfile:
-                    writer = csv.writer(outfile)
-                    for item in cluster:
-                        writer.writerow(item)
+    exit()
+    # only save the results of the first attempt
+    if i == 0:
+        for index, cluster in enumerate(results.clusters):
+            with open(f"cluster-{index+1}.csv", 'w', newline='') as outfile:
+                writer = csv.writer(outfile)
+                for item in cluster:
+                    writer.writerow(item)
