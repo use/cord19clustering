@@ -190,7 +190,7 @@ if __name__ == '__main__':
     for k in range(1,kmax):
         K.append(k)
         results = find_clusters(docs, k)
-        #WCSSE.append(results.wcsse)
+        WCSSE.append(results.wcsse)
     scaled_WCSSE = [x/WCSSE[0] for x in WCSSE]
     optimal_k = optimal_k_WCSSE(K,scaled_WCSSE,0.05)
     results = find_clusters(docs, optimal_k)
