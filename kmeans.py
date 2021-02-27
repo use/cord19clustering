@@ -9,6 +9,7 @@ import library
 
 Wordlist = Dict[int, float]
 Doc = Tuple[str, Wordlist, float]
+VocabWords = Dict[int, Tuple[str, float]]
 
 @dataclass
 class ClusterResults:
@@ -116,7 +117,7 @@ def find_clusters(items: List[Doc], k: int):
         timings['assign'] += time.time() - t
 
         lengths = [len(cluster) for cluster in new_clusters]
-        print(f"iteration {iterations} ({(time.time()-iteration_timer):.2f}s) {lengths} skipped {skipped}")
+        print(f"k={k}, iteration {iterations} ({(time.time()-iteration_timer):.2f}s) {lengths} skipped {skipped}")
 
         if new_clusters == old_clusters:
             # the following two lines can be used to add the centroids at index 0, so you can graph them
@@ -153,7 +154,7 @@ def common_words_in_cluster(items: List[Doc], corpus_freqs: Dict[int, int]):
         cluster_freq = cluster_freqs[word_id] / len(items)
         corpus_freq = corpus_freqs[word_id]
         frequency_diff = round(cluster_freq - corpus_freq, 2)
-        word_list.append((vocab['words'][word_id][0], frequency_diff))
+        word_list.append((vocab['words'][word_id][0], frequency_diff, cluster_freq))
     word_list.sort(key=lambda word: -word[1])
     return word_list
 
@@ -177,6 +178,10 @@ def optimal_k_WCSSE(K: List[int], WCSSE: List[float], threshold: float):
             return K[i-1]
     return len(WCSSE)
 
+def doc_sorted_tfidf_words(doc: Doc, vocab_words: VocabWords) -> List[Tuple[str, float]]:
+    words = [(vocab_words[word][0], round(doc[1][word], 3)) for word in doc[1]]
+    return sorted(words, key=lambda word: -word[1])
+
 if __name__ == '__main__':
     t0 = time.time()
     docs_dir = '../input/CORD-19-research-challenge/document_parses/pdf_json'
@@ -198,6 +203,7 @@ if __name__ == '__main__':
         K.append(k)
         results = find_clusters(docs, k)
         WCSSE.append(results.wcsse)
+    print(f"WCSSE: {WCSSE}")
     scaled_WCSSE = [x/WCSSE[0] for x in WCSSE]
     optimal_k = optimal_k_WCSSE(K,scaled_WCSSE,0.05)
     results = find_clusters(docs, optimal_k)
@@ -219,11 +225,12 @@ if __name__ == '__main__':
         print(f"------- Cluster {index} -------")
         print(f"Size: {cluster['length']:,}")
         print(f"Defining words:")
-        print("  - " + ", ".join([f"{word[0]} +{round(word[1]*100)}%" for word in cluster['common_words'][:10]]))
+        print("  - " + ", ".join([f"{word[0]} {round(word[2]*100)}% (+{round(word[1]*100)}%)" for word in cluster['common_words'][:10]]))
         print('5 random papers')
         sample = random.sample(cluster['cluster'], 5)
         for doc in sample:
             print(f"  - {library.get_doc_title_from_filename(doc[0], docs_dir)}")
+            print(doc_sorted_tfidf_words(doc, vocab['words'])[:10])
 
     freqs_list = [(library.lookup_word(word, vocab), sub_corpus_freqs[word]) for word in sub_corpus_freqs]
     freqs_sample = random.sample(freqs_list, 5)
