@@ -171,7 +171,7 @@ def sub_corpus_frequencies(items: List[Doc]) -> Dict[int, int]:
         freqs[word] = freqs[word] / len(items)
     return freqs
 
-def optimal_k_WCSSE(K: int, WCSSE: List[float], threshold: float):
+def optimal_k_WCSSE(K: List[int], WCSSE: List[float], threshold: float):
     for i in range(1,len(WCSSE)):
         if WCSSE[i-1]-WCSSE[i] < threshold:
             return K[i-1]
