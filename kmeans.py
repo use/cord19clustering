@@ -194,7 +194,7 @@ if __name__ == '__main__':
     kmax = 10
     K = []
     WCSSE = []
-    for k in range(1,kmax):
+    for k in range(1, kmax + 1):
         K.append(k)
         results = find_clusters(docs, k)
         WCSSE.append(results.wcsse)
