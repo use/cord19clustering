@@ -28,13 +28,20 @@ def item_distance_euclidian(a: Doc, b: Doc) -> float:
     sum_c = sum([(a[1][word] - b[1][word]) ** 2 for word in shared_words])
     return (sum_a + sum_b + sum_c) ** (1/2)
 
+norm_cache = {}
 def item_distance_dot_product(a: Doc, b: Doc) -> float:
     shared_words = set(a[1]).intersection(b[1])
     similarity = sum(a[1][word] * b[1][word] for word in shared_words)
-    if similarity == 0:
-        return 1
-    else:
-        return abs(1/similarity)
+    similarity_normalized = similarity / (norm(a) * norm(b))
+    return 1 - similarity_normalized
+
+def norm(doc: Doc):
+    if doc[0] in norm_cache:
+        return norm_cache[doc[0]]
+    freqs = doc[1]
+    norm = sum(freqs[word] ** 2 for word in freqs) ** (1/2)
+    norm_cache[doc[0]] = norm
+    return norm
 
 def find_centroid(cluster: List[Doc]) -> Doc:
     t = time.time()
@@ -55,7 +62,7 @@ def find_centroid(cluster: List[Doc]) -> Doc:
         else:
             del result[word]
     print(f"centroid length: {len(result)} ({(time.time() - t):.2f}s)")
-    return ('centroid', result, 0)
+    return ('centroid-'+str(random.randint(0, 999999)), result, 0)
 
 timings = {
     'centroids': 0.0,
