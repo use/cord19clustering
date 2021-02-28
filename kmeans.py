@@ -178,9 +178,34 @@ def optimal_k_WCSSE(K: List[int], WCSSE: List[float], threshold: float):
             return K[i-1]
     return len(WCSSE)
 
+def optimal_k_WCSSEv2(K: List[int], WCSSE: List[float], threshold: float):
+    greatest_dist = -1
+    selected_k = -1
+    endpoint_1 = (K[0], WCSSE[0])
+    endpoint_2 = (K[-1], WCSSE[-1])
+    results = []
+    for i in range(len(K)):
+        k = K[i]
+        wcsse = WCSSE[i]
+        dist = distance_from_line_to_point(endpoint_1, endpoint_2, (k, wcsse))
+        results.append((k, wcsse, dist))
+        if dist > greatest_dist:
+            selected_k = k
+            greatest_dist = dist
+    print("WCSSE distance calculations:")
+    pp(results)
+    return selected_k
+
 def doc_sorted_tfidf_words(doc: Doc, vocab_words: VocabWords) -> List[Tuple[str, float]]:
     words = [(vocab_words[word][0], round(doc[1][word], 3)) for word in doc[1]]
     return sorted(words, key=lambda word: -word[1])
+
+def distance_from_line_to_point(endpoint_1: Tuple[float, float], endpoint_2: Tuple[float, float], point: Tuple[float, float]) -> float:
+    "this uses the equation for finding the distance between a point and a line"
+    x, y = 0, 1
+    numerator = abs((endpoint_2[x] - endpoint_1[x]) * (endpoint_1[y] - point[y]) - (endpoint_1[x] - point[x]) * (endpoint_2[y] - endpoint_1[y]))
+    denominator = ((endpoint_2[x] - endpoint_1[x]) ** 2 + (endpoint_2[y] - endpoint_1[y]) ** 2) ** (1/2)
+    return numerator / denominator
 
 if __name__ == '__main__':
     t0 = time.time()
