@@ -58,4 +58,5 @@ if __name__ == '__main__':
     print("Frequencies of some meaningful words:")
     print(", ".join([f"{word} {sub_corpus_freqs[vocab['index'][word]]}" for word in lookup_words]))
 
+    kmeans.save_clusters(clusters, f"clusters/clusters-{round(time.time())}.pickle")
     print(f"total time: {time.time() - t0}")

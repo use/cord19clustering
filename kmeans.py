@@ -1,8 +1,10 @@
+import pathlib
+import pickle
 import random
 import time
 from dataclasses import dataclass
 from pprint import pp
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 Wordlist = Dict[int, float]
 Doc = Tuple[str, Wordlist, float]
@@ -203,3 +205,20 @@ def distance_from_line_to_point(endpoint_1: Tuple[float, float], endpoint_2: Tup
     numerator = abs((endpoint_2[x] - endpoint_1[x]) * (endpoint_1[y] - point[y]) - (endpoint_1[x] - point[x]) * (endpoint_2[y] - endpoint_1[y]))
     denominator = ((endpoint_2[x] - endpoint_1[x]) ** 2 + (endpoint_2[y] - endpoint_1[y]) ** 2) ** (1/2)
     return numerator / denominator
+
+def save_clusters(clusters: List[Dict[str, Any]], output_file_path: str):
+    output = []
+    for cluster in clusters:
+        file_list = []
+        for doc in cluster['cluster']:
+            file_list.append(doc[0])
+        output.append({
+            'files': file_list,
+            'common_words': cluster['common_words'],
+        })
+    with open(output_file_path, 'wb') as out_file:
+        pickle.dump(output, out_file)
+
+def load_clusters(input_file_path: str):
+    with open(input_file_path, 'rb') as in_file:
+        return pickle.load(in_file)
