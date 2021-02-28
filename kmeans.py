@@ -153,7 +153,7 @@ def common_words_in_cluster(items: List[Doc], corpus_freqs: Dict[int, int]):
         frequency_diff = round(cluster_freq - corpus_freq, 2)
         word_list.append((vocab['words'][word_id][0], frequency_diff, cluster_freq))
     word_list.sort(key=lambda word: -word[1])
-    return word_list
+    return word_list[:100]
 
 def sub_corpus_frequencies(items: List[Doc]) -> Dict[int, int]:
     words_set = set()
