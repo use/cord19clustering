@@ -31,7 +31,7 @@ if __name__ == '__main__':
         clusters.append({
             'cluster': cluster,
             'length': len(cluster),
-            'common_words': kmeans.common_words_in_cluster(cluster, sub_corpus_freqs),
+            'common_words': kmeans.common_words_in_cluster(cluster, sub_corpus_freqs, vocab),
         })
     clusters.sort(key=lambda c: -c['length'])
     for index, cluster in enumerate(clusters):

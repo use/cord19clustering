@@ -138,7 +138,7 @@ def find_clusters(items: List[Doc], k: int):
         timings['centroids'] += time.time() - t
         old_clusters = new_clusters
 
-def common_words_in_cluster(items: List[Doc], corpus_freqs: Dict[int, int]):
+def common_words_in_cluster(items: List[Doc], corpus_freqs: Dict[int, int], vocab):
     cluster_words = set()
     for doc in items:
         cluster_words.update(doc[1])
