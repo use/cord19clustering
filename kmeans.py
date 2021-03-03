@@ -5,6 +5,8 @@ import time
 from dataclasses import dataclass
 from pprint import pp
 from typing import Any, Dict, List, Tuple
+from matplotlib import pyplot
+from sklearn.decomposition import PCA
 
 Wordlist = Dict[int, float]
 Doc = Tuple[str, Wordlist, float]
@@ -222,3 +224,54 @@ def save_clusters(clusters: List[Dict[str, Any]], output_file_path: str):
 def load_clusters(input_file_path: str):
     with open(input_file_path, 'rb') as in_file:
         return pickle.load(in_file)
+
+def plot_clusters(X,labels,num_docs):
+    seaborn.set(rc={'figure.figsize':(15,15)})
+
+    palette = seaborn.hls_palette(len(set(labels)), l=.4, s=.9)
+
+    seaborn.scatterplot(X[0], X[1], hue=labels, legend='full', palette=palette);
+    pyplot.title(f'Clusters with {num_docs} Documents');
+    pyplot.xlabel('PCA Component 1');
+    pyplot.ylabel('PCA Component 2');
+    pyplot.show()
+    return
+
+def reduce_to_kd_2d(cluster_results, vocab, k):
+    # Use k random words to represent docs, then PCA
+    random_words = set([])
+    while len(random_words) < k:
+        random_words.update([random.randint(0, len(vocab['words'])-1)])
+    X = []
+    labels = []
+    for i in range(len(cluster_results.clusters)):
+        cluster = cluster_results.clusters[i]
+        for j in range(len(cluster)):
+            doc = cluster[j]
+            row = numpy.zeros(shape=k)
+            for m in range(k):
+                if m in doc[1].keys():
+                    row[m] = doc[1][m]
+                else:
+                    row[m] = 0
+            X.append(row)
+            labels.append(i)
+    pca = PCA(n_components=2)
+    X = pca.fit_transform(X)
+    print(f'dim {k} -> 2 info preserved: {sum(pca.explained_variance_ratio_)}')
+    return numpy.transpose(X), labels
+
+def plot_k(K: List[int], WCSSE: List[float], optimal_k: int, num_docs: int):
+
+    pyplot.rcParams.update({"figure.figsize": (15,15), 'font.size':22})
+
+    pyplot.plot(K, WCSSE, color='b', label='Total WCSSE at k')
+    pyplot.axvline(x=optimal_k, color='r', label='Optimal k')
+    pyplot.plot([K[0],K[-1]], [WCSSE[0],WCSSE[-1]], '--g', label='Guideline')
+    pyplot.title(f'Optimal k with n = {num_docs}')
+    pyplot.xlabel('k')
+    pyplot.ylabel('WCSSE')
+    pyplot.legend()
+    pyplot.savefig(f'optimal_k_plot_n{num_docs}.png')
+    pyplot.show()
+    return

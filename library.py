@@ -11,9 +11,6 @@ import psutil
 import random
 import pathlib
 import pickle
-from matplotlib import pyplot
-import seaborn
-from sklearn.decomposition import PCA
 
 from langdetect import detect
 
@@ -398,77 +395,3 @@ def get_doc_title_from_filename(filename, docs_dir):
 
 def lookup_word(word_id, vocabulary):
     return vocabulary['words'][word_id][0]
-
-def plot_clusters(X,labels,num_docs):
-    seaborn.set(rc={'figure.figsize':(15,15)})
-
-    palette = seaborn.hls_palette(len(set(labels)), l=.4, s=.9)
-
-    seaborn.scatterplot(X[0], X[1], hue=labels, legend='full', palette=palette);
-    pyplot.title(f'Clusters with {num_docs} Documents');
-    pyplot.xlabel('PCA Component 1');
-    pyplot.ylabel('PCA Component 2');
-    pyplot.show()
-    return
-
-def plot_k(K,WCSSE,optimal_k,num_docs):
-
-    pyplot.rcParams["figure.figsize"] = (20,7)
-
-    pyplot.plot(K, WCSSE, color='b');
-    pyplot.axvline(x=optimal_k, color='r');
-    pyplot.plot([K[0],K[-1]], [WCSSE[0],WCSSE[-1]], '--g');
-    pyplot.title(f'Using {num_docs} Documents');
-    pyplot.xlabel('k');
-    pyplot.ylabel('WCSSE');
-    pyplot.show()
-    return
-
-def reduce_to_2d(cluster_results, docs, vocab, k):
-    # Use num_docs random words to represent docs, then PCA
-    new_doc_length = min(len(docs), len(vocab['words']))
-    random_words = set([])
-    while len(random_words) < new_doc_length:
-        random_words.update([random.randint(0, len(vocab['words'])-1)])
-    X = []
-    labels = []
-    for i in range(len(cluster_results.clusters)):
-        cluster = cluster_results.clusters[i]
-        for j in range(len(cluster)):
-            doc = cluster[j]
-            row = numpy.zeros(shape=len(random_words))
-            for m in range(len(random_words)):
-                if m in doc[1].keys():
-                    row[m] = doc[1][m]
-                else:
-                    row[m] = 0
-            X.append(row)
-            labels.append(i)
-    pca = PCA(n_components=2)
-    X = pca.fit_transform(X)
-    print(f'dim {k} -> 2 info preserved: {sum(pca.explained_variance_ratio_)}')
-    return numpy.transpose(X), labels
-
-def reduce_to_kd_2d(cluster_results, vocab, k):
-    # Use k random words to represent docs, then PCA
-    random_words = set([])
-    while len(random_words) < k:
-        random_words.update([random.randint(0, len(vocab['words'])-1)])
-    X = []
-    labels = []
-    for i in range(len(cluster_results.clusters)):
-        cluster = cluster_results.clusters[i]
-        for j in range(len(cluster)):
-            doc = cluster[j]
-            row = numpy.zeros(shape=k)
-            for m in range(k):
-                if m in doc[1].keys():
-                    row[m] = doc[1][m]
-                else:
-                    row[m] = 0
-            X.append(row)
-            labels.append(i)
-    pca = PCA(n_components=2)
-    X = pca.fit_transform(X)
-    print(f'dim {k} -> 2 info preserved: {sum(pca.explained_variance_ratio_)}')
-    return numpy.transpose(X), labels
