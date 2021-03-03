@@ -177,7 +177,7 @@ def optimal_k_WCSSE(K: List[int], WCSSE: List[float], threshold: float):
             return K[i-1]
     return len(WCSSE)
 
-def optimal_k_WCSSEv2(K: List[int], WCSSE: List[float], threshold: float):
+def optimal_k_WCSSEv2(K: List[int], WCSSE: List[float]):
     greatest_dist = -1
     selected_k = -1
     endpoint_1 = (K[0], WCSSE[0])
