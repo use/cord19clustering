@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     results = kmeans.find_clusters(docs, optimal_k_v2)
 
-    X, labels = library.reduce_to_2d(results, docs, vocab, optimal_k_v2)
+    X, labels = library.reduce_to_kd_2d(results, docs, vocab, optimal_k_v2)
 
     # Plot stuff
     library.plot_k(K,WCSSE,optimal_k_v2,num_docs)

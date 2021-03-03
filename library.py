@@ -448,3 +448,27 @@ def reduce_to_2d(cluster_results, docs, vocab, k):
     X = pca.fit_transform(X)
     print(f'dim {k} -> 2 info preserved: {sum(pca.explained_variance_ratio_)}')
     return numpy.transpose(X), labels
+
+def reduce_to_kd_2d(cluster_results, vocab, k):
+    # Use k random words to represent docs, then PCA
+    random_words = set([])
+    while len(random_words) < k:
+        random_words.update([random.randint(0, len(vocab['words'])-1)])
+    X = []
+    labels = []
+    for i in range(len(cluster_results.clusters)):
+        cluster = cluster_results.clusters[i]
+        for j in range(len(cluster)):
+            doc = cluster[j]
+            row = numpy.zeros(shape=k)
+            for m in range(k):
+                if m in doc[1].keys():
+                    row[m] = doc[1][m]
+                else:
+                    row[m] = 0
+            X.append(row)
+            labels.append(i)
+    pca = PCA(n_components=2)
+    X = pca.fit_transform(X)
+    print(f'dim {k} -> 2 info preserved: {sum(pca.explained_variance_ratio_)}')
+    return numpy.transpose(X), labels
