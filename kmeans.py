@@ -34,7 +34,15 @@ norm_cache = {}
 def item_distance_dot_product(a: Doc, b: Doc) -> float:
     shared_words = set(a[1]).intersection(b[1])
     similarity = sum(a[1][word] * b[1][word] for word in shared_words)
-    similarity_normalized = similarity / (norm(a) * norm(b))
+    norm_a = norm(a)
+    norm_b = norm(b)
+    if norm_a == 0:
+        print(f"doc has norm zero: {a[0]}")
+        return 1
+    if norm_b == 0:
+        print(f"doc has norm zero: {b[0]}")
+        return 1
+    similarity_normalized = similarity / (norm_a * norm_b)
     return 1 - similarity_normalized
 
 def norm(doc: Doc):
