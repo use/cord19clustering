@@ -32,8 +32,10 @@ def item_distance_euclidian(a: Doc, b: Doc) -> float:
 
 norm_cache = {}
 def item_distance_dot_product(a: Doc, b: Doc, use_cache=True) -> float:
-    shared_words = set(a[1]).intersection(b[1])
-    similarity = sum(a[1][word] * b[1][word] for word in shared_words)
+    similarity = 0
+    for word in a[1]:
+        if word in b[1]:
+            similarity += a[1][word] * b[1][word]
     norm_a = norm(a, use_cache=use_cache)
     norm_b = norm(b, use_cache=use_cache)
     if norm_a == 0:
