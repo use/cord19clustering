@@ -7,6 +7,8 @@ from pprint import pp
 from typing import Any, Dict, List, Tuple
 from matplotlib import pyplot
 from sklearn.decomposition import PCA
+import multiprocessing
+import functools
 
 Wordlist = Dict[int, float]
 Doc = Tuple[str, Wordlist, float]
@@ -103,31 +105,45 @@ def find_clusters(items: List[Doc], k: int):
         t = time.time()
         # assign objects to clusters based on closest centroid
         skipped = 0
-        for item_index, item in enumerate(items):
-            lowest_distance = -1
-            selected_index = -1
-            
-            prev_index, streak = item_meta[item_index]
-            if streak > streak_threshold:
-                selected_index = prev_index
-                skipped += 1
-            else:
-                # find closest centroid to this object
-                for index, centroid in enumerate(centroids):
-                    t1 = time.time()
-                    distance = item_distance_dot_product(item, centroid)
-                    timings['dot product'] += time.time() - t1
-                    if lowest_distance == -1 or distance < lowest_distance:
-                        lowest_distance = distance
-                        selected_index = index
-                if prev_index == selected_index:
-                    streak += 1
-                else:
-                    streak = 0
-                item_meta[item_index] = (selected_index, streak)
-            new_clusters[selected_index].append(item)
-        timings['assign'] += time.time() - t
+        method = 2
+        if method==1:
+            for item_index, item in enumerate(items):
+                lowest_distance = -1
+                selected_index = -1
 
+                prev_index, streak = item_meta[item_index]
+                if streak > streak_threshold:
+                    selected_index = prev_index
+                    skipped += 1
+                else:
+                    # find closest centroid to this object
+                    for index, centroid in enumerate(centroids):
+                        t1 = time.time()
+                        distance = item_distance_dot_product(item, centroid)
+                        timings['dot product'] += time.time() - t1
+                        if lowest_distance == -1 or distance < lowest_distance:
+                            lowest_distance = distance
+                            selected_index = index
+                    if prev_index == selected_index:
+                        streak += 1
+                    else:
+                        streak = 0
+                    item_meta[item_index] = (selected_index, streak)
+                new_clusters[selected_index].append(item)
+            timings['assign'] += time.time() - t
+
+        if method==2:
+            with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
+                cluster_map = pool.map(
+                    functools.partial(
+                        closest_centroid,
+                        centroids=centroids,
+                    ),
+                    items,
+                    chunksize=200,
+                )
+            for item_index, cluster_index in enumerate(cluster_map):
+                new_clusters[cluster_index].append(items[item_index])
         lengths = [len(cluster) for cluster in new_clusters]
         print(f"k={k}, iteration {iterations} ({(time.time()-iteration_timer):.2f}s) {lengths} skipped {skipped}")
 
@@ -152,6 +168,16 @@ def find_clusters(items: List[Doc], k: int):
         centroids = [find_centroid(cluster) for cluster in new_clusters]
         timings['centroids'] += time.time() - t
         old_clusters = new_clusters
+
+def closest_centroid(item: Doc, centroids: List[Doc]) -> int:
+    lowest_distance = -1
+    selected_index = -1
+    for index, centroid in enumerate(centroids):
+        distance = item_distance_dot_product(item, centroid)
+        if lowest_distance == -1 or distance < lowest_distance:
+            lowest_distance = distance
+            selected_index = index
+    return selected_index
 
 def common_words_in_cluster(items: List[Doc], corpus_freqs: Dict[int, int], vocab):
     cluster_words = set()
