@@ -12,10 +12,10 @@ for filename in filenames:
         clustering.sort(key=lambda cluster: - len(cluster['files']))
         clusterings.append(clustering)
 
-num_clusters = len(clusterings[0])
-num_docs = sum(len(cluster['files']) for cluster in clusterings[0])
 
 for i, clustering in enumerate(clusterings):
+    num_clusters = len(clusterings)
+    num_docs = sum(len(cluster['files']) for cluster in clustering)
     print(f"Clustering #{i+1} (k={num_clusters}, n={num_docs:,})")
     for cluster in clustering:
         print(
