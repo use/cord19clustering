@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Tuple
 from matplotlib import pyplot
 from sklearn.decomposition import PCA
 import multiprocessing
+from multiprocessing import shared_memory
 import functools
 
 Wordlist = Dict[int, float]
@@ -88,6 +89,11 @@ def find_clusters(items: List[Doc], k: int):
     centroids = None
     old_clusters = [[] for x in range(k)]
 
+    items_mem = shared_memory.ShareableList(
+        [pickle.dumps(item) for item in items],
+        name='items',
+    )
+    items_mem.shm.unlink()
     # index 0: index of prev cluster
     # index 1: stream of times landed in the same cluster
     item_meta: List[Tuple[int, int]] = [(-1, 0) for _ in range(len(items))]
@@ -101,6 +107,11 @@ def find_clusters(items: List[Doc], k: int):
             # select k objects at random for the first centroids
             centroids = random.sample(items, k)
 
+        centroids_mem = shared_memory.ShareableList(
+            [pickle.dumps(centroid) for centroid in centroids],
+            name='centroids',
+        )
+        centroids_mem.shm.unlink()
         iteration_timer = time.time()
         t = time.time()
         # assign objects to clusters based on closest centroid
@@ -135,13 +146,11 @@ def find_clusters(items: List[Doc], k: int):
         if method==2:
             with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
                 cluster_map = pool.map(
-                    functools.partial(
-                        closest_centroid,
-                        centroids=centroids,
-                    ),
-                    items,
-                    chunksize=200,
+                    closest_centroid,
+                    range(len(items)),
+                    # chunksize=100,
                 )
+            centroids_mem.shm.close()
             for item_index, cluster_index in enumerate(cluster_map):
                 new_clusters[cluster_index].append(items[item_index])
         lengths = [len(cluster) for cluster in new_clusters]
@@ -169,7 +178,15 @@ def find_clusters(items: List[Doc], k: int):
         timings['centroids'] += time.time() - t
         old_clusters = new_clusters
 
-def closest_centroid(item: Doc, centroids: List[Doc]) -> int:
+def closest_centroid(item_index: int) -> int:
+    item_mem = shared_memory.ShareableList(name='items')
+    item = pickle.loads(item_mem[item_index])
+    item_mem.shm.unlink()
+
+    centroids_mem = shared_memory.ShareableList(name='centroids')
+    centroids = [pickle.loads(mem) for mem in centroids_mem]
+    centroids_mem.shm.unlink()
+
     lowest_distance = -1
     selected_index = -1
     for index, centroid in enumerate(centroids):
