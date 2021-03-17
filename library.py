@@ -47,16 +47,16 @@ def tfidf(word_id, vocabulary, doc, corpus_length):
     return term_frequency * idf
 
 timings = {
-    'load': 0,
-    'lowercase': 0,
-    'punctuation': 0,
-    'tokenize': 0,
-    'stopwords': 0,
-    'stemming': 0,
-    'vocab': 0,
-    'openfile': 0,
-    'detect_english': 0,
-    'is_number': 0,
+    'load': 0.0,
+    'lowercase': 0.0,
+    'punctuation': 0.0,
+    'tokenize': 0.0,
+    'stopwords': 0.0,
+    'stemming': 0.0,
+    'vocab': 0.0,
+    'openfile': 0.0,
+    'detect_english': 0.0,
+    'is_number': 0.0,
 }
 
 stopwords = set(nltk.corpus.stopwords.words('english'))
