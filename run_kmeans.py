@@ -9,12 +9,12 @@ if __name__ == '__main__':
     t0 = time.time()
     docs_dir = '../input/CORD-19-research-challenge/document_parses/pdf_json'
 
-    num_docs = 10000
+    num_docs = 200000
     k_value = 10
     num_clusterings = 1
 
     t = time.time()
-    vocab, docs = library.load_project('data_after_removing_words')
+    vocab, docs = library.load_project('data_after_removing_words', num_docs=num_docs, random_files=False)
     print(f"loaded {len(docs):,} docs {time.time()-t:.2f}")
 
     t = time.time()
